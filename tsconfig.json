@@ -26,7 +26,10 @@
       "@auth/*": ["src/auth/*"],
 
       "@users": ["src/users"],
-      "@users/*": ["src/users/*"]
+      "@users/*": ["src/users/*"],
+
+      "@common": ["src/common"],
+      "@common/*": ["src/common/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

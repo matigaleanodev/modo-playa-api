@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateLodgingDto } from './dto/create-lodging.dto';
 import { UpdateLodgingDto } from './dto/update-lodging.dto';
 import { Contact, ContactDocument } from '@contacts/schemas/contact.schema';
@@ -11,6 +7,8 @@ import { Model, Types } from 'mongoose';
 import { Lodging, LodgingDocument } from './schemas/lodging.schema';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { AvailabilityRangeDto } from './dto/availability-range.dto';
+import { DomainException } from '@common/exceptions/domain.exception';
+import { ERROR_CODES } from '@common/constants/error-code';
 
 @Injectable()
 export class LodgingsService {
@@ -162,8 +160,10 @@ export class LodgingsService {
       const to = new Date(range.to);
 
       if (from > to) {
-        throw new BadRequestException(
+        throw new DomainException(
           'Invalid availability range: from must be before or equal to to',
+          ERROR_CODES.INVALID_AVAILABILITY_RANGE,
+          HttpStatus.BAD_REQUEST,
         );
       }
     }

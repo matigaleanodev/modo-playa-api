@@ -3,6 +3,8 @@ import { LodgingsService } from './lodgings.service';
 import { getModelToken } from '@nestjs/mongoose';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { LodgingType } from './schemas/lodging.schema';
+import { DomainException } from '@common/exceptions/domain.exception';
 
 describe('LodgingsService', () => {
   let service: LodgingsService;
@@ -55,10 +57,10 @@ describe('LodgingsService', () => {
         title: 'Test',
         description: 'Desc',
         location: 'Loc',
-        type: 'cabin',
+        type: LodgingType.CABIN,
         mainImage: 'https://img.com',
         contactId,
-      } as any);
+      });
 
       expect(result).toBeDefined();
     });
@@ -72,9 +74,9 @@ describe('LodgingsService', () => {
         title: 'Test',
         description: 'Desc',
         location: 'Loc',
-        type: 'cabin',
+        type: LodgingType.CABIN,
         mainImage: 'https://img.com',
-      } as any);
+      });
 
       expect(contactModelMock.findOne).toHaveBeenCalled();
       expect(result).toBeDefined();
@@ -87,9 +89,9 @@ describe('LodgingsService', () => {
         title: 'Test',
         description: 'Desc',
         location: 'Loc',
-        type: 'cabin',
+        type: LodgingType.CABIN,
         mainImage: 'https://img.com',
-      } as any);
+      });
 
       expect(result).toBeDefined();
     });
@@ -100,11 +102,11 @@ describe('LodgingsService', () => {
           title: 'Test',
           description: 'Desc',
           location: 'Loc',
-          type: 'cabin',
+          type: LodgingType.CABIN,
           mainImage: 'https://img.com',
           occupiedRanges: [{ from: '2026-02-10', to: '2026-02-01' }],
-        } as any),
-      ).rejects.toBeInstanceOf(BadRequestException);
+        }),
+      ).rejects.toBeInstanceOf(DomainException);
     });
   });
 
@@ -120,7 +122,7 @@ describe('LodgingsService', () => {
 
       lodgingModelMock.countDocuments.mockResolvedValue(1);
 
-      const result = await service.findAll({} as any);
+      const result = await service.findAll({});
 
       expect(result.data.length).toBe(1);
       expect(result.meta.total).toBe(1);
@@ -137,7 +139,7 @@ describe('LodgingsService', () => {
 
       lodgingModelMock.countDocuments.mockResolvedValue(1);
 
-      await service.findAll({ includeInactive: true } as any);
+      await service.findAll({ includeInactive: true });
 
       expect(lodgingModelMock.find).toHaveBeenCalledWith({});
     });
@@ -173,7 +175,7 @@ describe('LodgingsService', () => {
 
       const result = await service.update(new Types.ObjectId().toHexString(), {
         title: 'Nuevo',
-      } as any);
+      });
 
       expect(result).toBeDefined();
     });
@@ -182,8 +184,8 @@ describe('LodgingsService', () => {
       await expect(
         service.update(new Types.ObjectId().toHexString(), {
           occupiedRanges: [{ from: '2026-02-10', to: '2026-02-01' }],
-        } as any),
-      ).rejects.toBeInstanceOf(BadRequestException);
+        }),
+      ).rejects.toBeInstanceOf(DomainException);
     });
 
     it('lanza NotFound si no existe', async () => {
@@ -192,7 +194,7 @@ describe('LodgingsService', () => {
       await expect(
         service.update(new Types.ObjectId().toHexString(), {
           title: 'Test',
-        } as any),
+        }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });

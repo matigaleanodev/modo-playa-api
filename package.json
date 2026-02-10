@@ -78,7 +78,8 @@
       "^@contacts/(.*)$": "<rootDir>/src/contacts/$1",
       "^@lodgings/(.*)$": "<rootDir>/src/lodgings/$1",
       "^@auth/(.*)$": "<rootDir>/src/auth/$1",
-      "^@users/(.*)$": "<rootDir>/src/users/$1"
+      "^@users/(.*)$": "<rootDir>/src/users/$1",
+      "^@common/(.*)$": "<rootDir>/src/common/$1"
     }
   }
 }
