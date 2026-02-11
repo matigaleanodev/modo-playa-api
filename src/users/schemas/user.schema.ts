@@ -15,7 +15,7 @@ export class User {
     index: true,
     default: () => new Types.ObjectId(),
   })
-  ownerId?: Types.ObjectId;
+  ownerId!: Types.ObjectId;
 
   /* =========================
    * Credenciales
@@ -32,6 +32,15 @@ export class User {
 
   @Prop({ default: false })
   isPasswordSet!: boolean;
+
+  @Prop()
+  resetPasswordCodeHash?: string;
+
+  @Prop()
+  resetPasswordExpiresAt?: Date;
+
+  @Prop({ default: 0 })
+  resetPasswordAttempts!: number;
 
   /* =========================
    * Estado

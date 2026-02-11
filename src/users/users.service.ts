@@ -45,11 +45,11 @@ export class UsersService {
     return this.userModel.find({ ownerId }).sort({ createdAt: 1 }).exec();
   }
 
-  async findById(ownerId: string, userId: string): Promise<User | null> {
-    return this.userModel.findOne({
-      _id: userId,
-      ownerId,
-    });
+  async findById(
+    ownerId: string,
+    userId: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel.findOne({ _id: userId, ownerId });
   }
 
   async updateUser(
@@ -68,6 +68,57 @@ export class UsersService {
     await this.userModel.updateOne(
       { _id: userId, ownerId },
       { $set: { isActive: false } },
+    );
+  }
+
+  async findByEmail(email: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ email });
+  }
+
+  async findByUsername(username: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ username });
+  }
+
+  async setPassword(ownerId: string, userId: string, passwordHash: string) {
+    return this.userModel.updateOne(
+      { _id: userId, ownerId },
+      {
+        passwordHash,
+        isPasswordSet: true,
+      },
+    );
+  }
+
+  async setResetPasswordData(
+    userId: string,
+    codeHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.userModel.updateOne(
+      { _id: userId },
+      {
+        resetPasswordCodeHash: codeHash,
+        resetPasswordExpiresAt: expiresAt,
+        resetPasswordAttempts: 0,
+      },
+    );
+  }
+
+  async incrementResetAttempts(userId: string): Promise<void> {
+    await this.userModel.updateOne(
+      { _id: userId },
+      { $inc: { resetPasswordAttempts: 1 } },
+    );
+  }
+
+  async clearResetData(userId: string): Promise<void> {
+    await this.userModel.updateOne(
+      { _id: userId },
+      {
+        resetPasswordCodeHash: null,
+        resetPasswordExpiresAt: null,
+        resetPasswordAttempts: 0,
+      },
     );
   }
 }
