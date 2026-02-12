@@ -3,13 +3,11 @@ import { ContactsController } from './contacts.controller';
 import { ContactsService } from './contacts.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
-import { Contact } from './schemas/contact.schema';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
 import { Request } from 'express';
 
 describe('ContactsController', () => {
   let controller: ContactsController;
-  let service: ContactsService;
 
   const mockService = {
     create: jest.fn(),
@@ -26,7 +24,7 @@ describe('ContactsController', () => {
     purpose: 'ACCESS',
   };
 
-  const mockRequest: Request & { user: RequestUser } = {
+  const mockRequest = {
     user: mockUser,
   } as Request & { user: RequestUser };
 
@@ -42,95 +40,125 @@ describe('ContactsController', () => {
     }).compile();
 
     controller = module.get<ContactsController>(ContactsController);
-    service = module.get<ContactsService>(ContactsService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  // -------------------------
-  // CREATE
-  // -------------------------
-
   it('debe llamar a create con ownerId', async () => {
     const dto: CreateContactDto = { name: 'Test' };
-    const expected: Contact = { name: 'Test' } as Contact;
 
-    mockService.create.mockResolvedValue(expected);
+    const mockContact = {
+      _id: '1',
+      name: 'Test',
+    };
+
+    mockService.create.mockResolvedValue(mockContact);
 
     const result = await controller.create(dto, mockRequest);
 
-    expect(service.create).toHaveBeenCalledWith(dto, mockUser.ownerId);
-    expect(result).toEqual(expected);
+    expect(mockService.create).toHaveBeenCalledWith(dto, mockUser.ownerId);
+
+    expect(result).toEqual({
+      id: '1',
+      name: 'Test',
+      email: undefined,
+      whatsapp: undefined,
+      isDefault: undefined,
+      active: undefined,
+      notes: undefined,
+    });
   });
 
-  // -------------------------
-  // FIND ALL
-  // -------------------------
-
   it('debe llamar a findAll con ownerId y role', async () => {
-    const expected: Contact[] = [];
+    const mockContacts = [
+      {
+        _id: '1',
+        name: 'Test',
+      },
+    ];
 
-    mockService.findAll.mockResolvedValue(expected);
+    mockService.findAll.mockResolvedValue(mockContacts);
 
     const result = await controller.findAll(false, mockRequest);
 
-    expect(service.findAll).toHaveBeenCalledWith(
+    expect(mockService.findAll).toHaveBeenCalledWith(
       false,
       mockUser.ownerId,
       mockUser.role,
     );
 
-    expect(result).toEqual(expected);
+    expect(result).toEqual([
+      {
+        id: '1',
+        name: 'Test',
+        email: undefined,
+        whatsapp: undefined,
+        isDefault: undefined,
+        active: undefined,
+        notes: undefined,
+      },
+    ]);
   });
 
-  // -------------------------
-  // FIND ONE
-  // -------------------------
-
   it('debe llamar a findOne con parámetros correctos', async () => {
-    const expected: Contact = { name: 'Test' } as Contact;
+    const mockContact = {
+      _id: '1',
+      name: 'Test',
+    };
 
-    mockService.findOne.mockResolvedValue(expected);
+    mockService.findOne.mockResolvedValue(mockContact);
 
     const result = await controller.findOne('contactId', false, mockRequest);
 
-    expect(service.findOne).toHaveBeenCalledWith(
+    expect(mockService.findOne).toHaveBeenCalledWith(
       'contactId',
       false,
       mockUser.ownerId,
       mockUser.role,
     );
 
-    expect(result).toEqual(expected);
+    expect(result).toEqual({
+      id: '1',
+      name: 'Test',
+      email: undefined,
+      whatsapp: undefined,
+      isDefault: undefined,
+      active: undefined,
+      notes: undefined,
+    });
   });
-
-  // -------------------------
-  // UPDATE
-  // -------------------------
 
   it('debe llamar a update con ownerId y role', async () => {
     const dto: UpdateContactDto = { name: 'Updated' };
-    const expected: Contact = { name: 'Updated' } as Contact;
 
-    mockService.update.mockResolvedValue(expected);
+    const mockContact = {
+      _id: '1',
+      name: 'Updated',
+    };
+
+    mockService.update.mockResolvedValue(mockContact);
 
     const result = await controller.update('contactId', dto, mockRequest);
 
-    expect(service.update).toHaveBeenCalledWith(
+    expect(mockService.update).toHaveBeenCalledWith(
       'contactId',
       dto,
       mockUser.ownerId,
       mockUser.role,
     );
 
-    expect(result).toEqual(expected);
+    expect(result).toEqual({
+      id: '1',
+      name: 'Updated',
+      email: undefined,
+      whatsapp: undefined,
+      isDefault: undefined,
+      active: undefined,
+      notes: undefined,
+    });
   });
-
-  // -------------------------
-  // REMOVE
-  // -------------------------
 
   it('debe llamar a remove con ownerId y role', async () => {
     const expected = { deleted: true };
@@ -139,7 +167,7 @@ describe('ContactsController', () => {
 
     const result = await controller.remove('contactId', mockRequest);
 
-    expect(service.remove).toHaveBeenCalledWith(
+    expect(mockService.remove).toHaveBeenCalledWith(
       'contactId',
       mockUser.ownerId,
       mockUser.role,

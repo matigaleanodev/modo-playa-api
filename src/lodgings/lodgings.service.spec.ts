@@ -115,13 +115,15 @@ describe('LodgingsService', () => {
     });
   });
 
-  // -------------------------
-  // remove
-  // -------------------------
-
   describe('remove', () => {
-    it('debe eliminar correctamente', async () => {
-      mockLodgingModel.findOneAndDelete.mockResolvedValue({ _id: '1' });
+    it('debe hacer soft delete correctamente', async () => {
+      const mockSave = jest.fn().mockResolvedValue(true);
+
+      mockLodgingModel.findOne.mockResolvedValue({
+        _id: '1',
+        active: true,
+        save: mockSave,
+      });
 
       const result = await service.remove(
         '507f1f77bcf86cd799439011',
@@ -129,11 +131,13 @@ describe('LodgingsService', () => {
         'OWNER',
       );
 
+      expect(mockLodgingModel.findOne).toHaveBeenCalled();
+      expect(mockSave).toHaveBeenCalled();
       expect(result).toEqual({ deleted: true });
     });
 
     it('debe lanzar error si no existe', async () => {
-      mockLodgingModel.findOneAndDelete.mockResolvedValue(null);
+      mockLodgingModel.findOne.mockResolvedValue(null);
 
       await expect(
         service.remove('507f1f77bcf86cd799439011', 'owner1', 'OWNER'),

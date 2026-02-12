@@ -25,7 +25,10 @@ export class LodgingsService {
     private readonly contactModel: Model<ContactDocument>,
   ) {}
 
-  async create(dto: CreateLodgingDto, ownerId: string): Promise<Lodging> {
+  async create(
+    dto: CreateLodgingDto,
+    ownerId: string,
+  ): Promise<LodgingDocument> {
     this.validateRanges(dto.occupiedRanges);
 
     let contactId: Types.ObjectId | undefined;
@@ -77,7 +80,7 @@ export class LodgingsService {
 
   async findPublicPaginated(
     query: PublicLodgingsQueryDto,
-  ): Promise<PaginatedResponse<Lodging>> {
+  ): Promise<PaginatedResponse<LodgingDocument>> {
     const {
       page = 1,
       limit = 10,
@@ -137,7 +140,7 @@ export class LodgingsService {
     };
   }
 
-  async findPublicById(id: string): Promise<Lodging> {
+  async findPublicById(id: string): Promise<LodgingDocument> {
     const lodging = await this.lodgingModel.findOne({
       _id: id,
       active: true,
@@ -158,7 +161,7 @@ export class LodgingsService {
     query: AdminLodgingsQueryDto,
     ownerId: string,
     role: UserRole,
-  ): Promise<PaginatedResponse<Lodging>> {
+  ): Promise<PaginatedResponse<LodgingDocument>> {
     const { page = 1, limit = 10, includeInactive = true } = query;
 
     const filters: QueryFilter<LodgingDocument> = {};
@@ -187,7 +190,7 @@ export class LodgingsService {
     id: string,
     ownerId: string,
     role: UserRole,
-  ): Promise<Lodging> {
+  ): Promise<LodgingDocument> {
     const filters: QueryFilter<LodgingDocument> = {
       _id: id,
     };
@@ -214,7 +217,7 @@ export class LodgingsService {
     dto: UpdateLodgingDto,
     ownerId: string,
     role: UserRole,
-  ): Promise<Lodging> {
+  ): Promise<LodgingDocument> {
     if (!Types.ObjectId.isValid(id)) {
       throw new DomainException(
         'Invalid lodging id',
@@ -285,7 +288,7 @@ export class LodgingsService {
       filters.ownerId = ownerId;
     }
 
-    const lodging = await this.lodgingModel.findOneAndDelete(filters);
+    const lodging = await this.lodgingModel.findOne(filters);
 
     if (!lodging) {
       throw new DomainException(
@@ -294,6 +297,9 @@ export class LodgingsService {
         HttpStatus.NOT_FOUND,
       );
     }
+
+    lodging.active = false;
+    await lodging.save();
 
     return { deleted: true };
   }

@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -15,6 +22,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guard/auth.guard';
 import { ChangePasswordDto } from './dto/chage-password.dto';
 import { VerifyResetCodeDto } from './dto/verifiy-reset-code.dto';
+import { AuthResponse } from './interfaces/auth-response.interface';
 
 import {
   AUTH_TOKEN_RESPONSE_EXAMPLE,
@@ -22,6 +30,7 @@ import {
   FORGOT_PASSWORD_RESPONSE_EXAMPLE,
   RESET_PASSWORD_RESPONSE_EXAMPLE,
 } from './swagger/auth.swagger';
+import { AuthUserResponse } from './interfaces/auth-user.interface';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -40,7 +49,7 @@ export class AuthController {
     schema: { example: AUTH_TOKEN_RESPONSE_EXAMPLE },
   })
   @Post('activate')
-  activate(@Body() dto: ActivateDto) {
+  activate(@Body() dto: ActivateDto): Promise<{ accessToken: string }> {
     return this.authService.activate(dto);
   }
 
@@ -59,7 +68,7 @@ export class AuthController {
   setPassword(
     @Request() req: { user: RequestUser },
     @Body() dto: SetPasswordDto,
-  ) {
+  ): Promise<AuthResponse> {
     return this.authService.setPassword(req.user, dto);
   }
 
@@ -73,7 +82,7 @@ export class AuthController {
     schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE },
   })
   @Post('login')
-  login(@Body() dto: LoginDto) {
+  login(@Body() dto: LoginDto): Promise<AuthResponse> {
     return this.authService.login(dto);
   }
 
@@ -88,7 +97,7 @@ export class AuthController {
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Post('refresh')
-  refresh(@Request() req: { user: RequestUser }) {
+  refresh(@Request() req: { user: RequestUser }): Promise<AuthResponse> {
     return this.authService.refresh(req.user);
   }
 
@@ -107,7 +116,7 @@ export class AuthController {
   changePassword(
     @Request() req: { user: RequestUser },
     @Body() dto: ChangePasswordDto,
-  ) {
+  ): Promise<AuthResponse> {
     return this.authService.changePassword(req.user, dto);
   }
 
@@ -123,7 +132,7 @@ export class AuthController {
     schema: { example: FORGOT_PASSWORD_RESPONSE_EXAMPLE },
   })
   @Post('forgot-password')
-  forgotPassword(@Body() dto: ForgotPasswordDto) {
+  forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
     return this.authService.forgotPassword(dto);
   }
 
@@ -137,7 +146,9 @@ export class AuthController {
     schema: { example: AUTH_TOKEN_RESPONSE_EXAMPLE },
   })
   @Post('verify-reset-code')
-  verifyResetCode(@Body() dto: VerifyResetCodeDto) {
+  verifyResetCode(
+    @Body() dto: VerifyResetCodeDto,
+  ): Promise<{ accessToken: string }> {
     return this.authService.verifyResetCode(dto);
   }
 
@@ -156,7 +167,22 @@ export class AuthController {
   resetPassword(
     @Request() req: { user: RequestUser },
     @Body() dto: SetPasswordDto,
-  ) {
+  ): Promise<{ message: string }> {
     return this.authService.resetPassword(req.user, dto);
+  }
+
+  @ApiOperation({
+    summary: 'Obtener usuario autenticado',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuario autenticado',
+    schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE.user },
+  })
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  me(@Request() req: { user: RequestUser }): Promise<AuthUserResponse> {
+    return this.authService.me(req.user);
   }
 }

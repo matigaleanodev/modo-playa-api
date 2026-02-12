@@ -19,7 +19,7 @@ export class UsersService {
     ownerId: string,
     role: UserRole,
     dto: CreateUserDto,
-  ): Promise<User> {
+  ): Promise<UserDocument> {
     if (role !== 'SUPERADMIN') {
       const count = await this.userModel.countDocuments({ ownerId });
 
@@ -59,22 +59,32 @@ export class UsersService {
     return user.save();
   }
 
-  async findAllByOwner(ownerId: string): Promise<User[]> {
+  async findAllByOwner(ownerId: string): Promise<UserDocument[]> {
     return this.userModel.find({ ownerId }).sort({ createdAt: 1 }).exec();
   }
 
-  async findById(
-    ownerId: string,
-    userId: string,
-  ): Promise<UserDocument | null> {
-    return this.userModel.findOne({ _id: userId, ownerId });
+  async findById(ownerId: string, userId: string): Promise<UserDocument> {
+    const user = await this.userModel.findOne({
+      _id: userId,
+      ownerId,
+    });
+
+    if (!user) {
+      throw new DomainException(
+        'User not found',
+        ERROR_CODES.USER_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return user;
   }
 
   async updateUser(
     ownerId: string,
     userId: string,
     dto: UpdateUserDto,
-  ): Promise<User> {
+  ): Promise<UserDocument> {
     const updated = await this.userModel.findOneAndUpdate(
       { _id: userId, ownerId },
       { $set: dto },

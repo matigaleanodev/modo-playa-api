@@ -25,13 +25,14 @@ import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
-import { Contact } from './schemas/contact.schema';
+import { ContactResponseDto } from './dto/contact-response.dto';
 
 import {
   CONTACT_RESPONSE_EXAMPLE,
   CONTACT_LIST_RESPONSE_EXAMPLE,
   DELETE_CONTACT_RESPONSE_EXAMPLE,
 } from './contacts.swagger';
+import { ContactMapper } from './contacts.mapper';
 
 @ApiTags('Admin - Contacts')
 @ApiBearerAuth('access-token')
@@ -51,11 +52,13 @@ export class ContactsController {
     schema: { example: CONTACT_RESPONSE_EXAMPLE },
   })
   @Post()
-  create(
+  async create(
     @Body() dto: CreateContactDto,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<Contact> {
-    return this.contactsService.create(dto, req.user.ownerId);
+  ): Promise<ContactResponseDto> {
+    const contact = await this.contactsService.create(dto, req.user.ownerId);
+
+    return ContactMapper.toResponse(contact);
   }
 
   @ApiOperation({
@@ -75,15 +78,17 @@ export class ContactsController {
     schema: { example: CONTACT_LIST_RESPONSE_EXAMPLE },
   })
   @Get()
-  findAll(
+  async findAll(
     @Query('includeInactive') includeInactive: boolean | undefined,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<Contact[]> {
-    return this.contactsService.findAll(
+  ): Promise<ContactResponseDto[]> {
+    const contacts = await this.contactsService.findAll(
       includeInactive,
       req.user.ownerId,
       req.user.role,
     );
+
+    return contacts.map((contact) => ContactMapper.toResponse(contact));
   }
 
   @ApiOperation({
@@ -108,17 +113,19 @@ export class ContactsController {
     schema: { example: CONTACT_RESPONSE_EXAMPLE },
   })
   @Get(':id')
-  findOne(
+  async findOne(
     @Param('id') id: string,
     @Query('includeInactive') includeInactive: boolean | undefined,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<Contact> {
-    return this.contactsService.findOne(
+  ): Promise<ContactResponseDto> {
+    const contact = await this.contactsService.findOne(
       id,
       includeInactive ?? false,
       req.user.ownerId,
       req.user.role,
     );
+
+    return ContactMapper.toResponse(contact);
   }
 
   @ApiOperation({
@@ -137,17 +144,19 @@ export class ContactsController {
     schema: { example: CONTACT_RESPONSE_EXAMPLE },
   })
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() dto: UpdateContactDto,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<Contact> {
-    return this.contactsService.update(
+  ): Promise<ContactResponseDto> {
+    const contact = await this.contactsService.update(
       id,
       dto,
       req.user.ownerId,
       req.user.role,
     );
+
+    return ContactMapper.toResponse(contact);
   }
 
   @ApiOperation({

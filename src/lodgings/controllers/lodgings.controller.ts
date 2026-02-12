@@ -26,8 +26,9 @@ import { UpdateLodgingDto } from '../dto/update-lodging.dto';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { AdminLodgingsQueryDto } from '@lodgings/dto/pagination-query.dto';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
-import { Lodging } from '../schemas/lodging.schema';
 import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
+import { LodgingResponseDto } from '@lodgings/dto/lodging-response.dto';
+import { LodgingMapper } from '@lodgings/mappers/lodgings.mapper';
 
 import {
   LODGING_RESPONSE_EXAMPLE,
@@ -52,11 +53,13 @@ export class LodgingsAdminController {
     schema: { example: LODGING_RESPONSE_EXAMPLE },
   })
   @Post()
-  create(
+  async create(
     @Body() dto: CreateLodgingDto,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<Lodging> {
-    return this.lodgingsService.create(dto, req.user.ownerId);
+  ): Promise<LodgingResponseDto> {
+    const lodging = await this.lodgingsService.create(dto, req.user.ownerId);
+
+    return LodgingMapper.toResponse(lodging);
   }
 
   @ApiOperation({
@@ -82,15 +85,20 @@ export class LodgingsAdminController {
     schema: { example: PAGINATED_LODGINGS_RESPONSE_EXAMPLE },
   })
   @Get()
-  findAll(
+  async findAll(
     @Query() query: AdminLodgingsQueryDto,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<PaginatedResponse<Lodging>> {
-    return this.lodgingsService.findAdminPaginated(
+  ): Promise<PaginatedResponse<LodgingResponseDto>> {
+    const result = await this.lodgingsService.findAdminPaginated(
       query,
       req.user.ownerId,
       req.user.role,
     );
+
+    return {
+      ...result,
+      data: result.data.map((lodging) => LodgingMapper.toResponse(lodging)),
+    };
   }
 
   @ApiOperation({
@@ -109,15 +117,17 @@ export class LodgingsAdminController {
     schema: { example: LODGING_RESPONSE_EXAMPLE },
   })
   @Get(':id')
-  findOne(
+  async findOne(
     @Param('id') id: string,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<Lodging> {
-    return this.lodgingsService.findAdminById(
+  ): Promise<LodgingResponseDto> {
+    const lodging = await this.lodgingsService.findAdminById(
       id,
       req.user.ownerId,
       req.user.role,
     );
+
+    return LodgingMapper.toResponse(lodging);
   }
 
   @ApiOperation({
@@ -136,23 +146,25 @@ export class LodgingsAdminController {
     schema: { example: LODGING_RESPONSE_EXAMPLE },
   })
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() dto: UpdateLodgingDto,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<Lodging> {
-    return this.lodgingsService.update(
+  ): Promise<LodgingResponseDto> {
+    const lodging = await this.lodgingsService.update(
       id,
       dto,
       req.user.ownerId,
       req.user.role,
     );
+
+    return LodgingMapper.toResponse(lodging);
   }
 
   @ApiOperation({
     summary: 'Eliminar alojamiento',
     description:
-      'Elimina un alojamiento. SUPERADMIN puede eliminar cualquier registro.',
+      'Realiza soft delete de un alojamiento. SUPERADMIN puede eliminar cualquier registro.',
   })
   @ApiParam({
     name: 'id',

@@ -28,6 +28,8 @@ import {
   USER_LIST_RESPONSE_EXAMPLE,
   UPDATE_USER_EXAMPLE,
 } from './users.swagger';
+import { UserResponseDto } from './dto/user-response.dto';
+import { UsersMapper } from './users.mapper';
 
 @ApiTags('Admin - Users')
 @ApiBearerAuth('access-token')
@@ -55,8 +57,14 @@ export class UsersController {
   async createUser(
     @Body() dto: CreateUserDto,
     @Req() req: Request & { user: RequestUser },
-  ) {
-    return this.usersService.createUser(req.user.ownerId, req.user.role, dto);
+  ): Promise<UserResponseDto> {
+    const user = await this.usersService.createUser(
+      req.user.ownerId,
+      req.user.role,
+      dto,
+    );
+
+    return UsersMapper.toResponse(user);
   }
 
   @ApiOperation({
@@ -68,8 +76,12 @@ export class UsersController {
     schema: { example: USER_LIST_RESPONSE_EXAMPLE },
   })
   @Get()
-  async findAll(@Req() req: Request & { user: RequestUser }) {
-    return this.usersService.findAllByOwner(req.user.ownerId);
+  async findAll(
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<UserResponseDto[]> {
+    const users = await this.usersService.findAllByOwner(req.user.ownerId);
+
+    return users.map((user) => UsersMapper.toResponse(user));
   }
 
   @ApiOperation({
@@ -88,8 +100,10 @@ export class UsersController {
   async findById(
     @Param('id') id: string,
     @Req() req: Request & { user: RequestUser },
-  ) {
-    return this.usersService.findById(req.user.ownerId, id);
+  ): Promise<UserResponseDto> {
+    const user = await this.usersService.findById(req.user.ownerId, id);
+
+    return UsersMapper.toResponse(user);
   }
 
   @ApiOperation({
@@ -114,7 +128,9 @@ export class UsersController {
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
     @Req() req: Request & { user: RequestUser },
-  ) {
-    return this.usersService.updateUser(req.user.ownerId, id, dto);
+  ): Promise<UserResponseDto> {
+    const user = await this.usersService.updateUser(req.user.ownerId, id, dto);
+
+    return UsersMapper.toResponse(user);
   }
 }

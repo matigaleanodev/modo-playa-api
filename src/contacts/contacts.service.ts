@@ -15,7 +15,10 @@ export class ContactsService {
     private readonly contactModel: Model<ContactDocument>,
   ) {}
 
-  async create(dto: CreateContactDto, ownerId: string): Promise<Contact> {
+  async create(
+    dto: CreateContactDto,
+    ownerId: string,
+  ): Promise<ContactDocument> {
     if (dto.isDefault) {
       await this.contactModel.updateMany(
         { ownerId, isDefault: true },
@@ -35,7 +38,7 @@ export class ContactsService {
     includeInactive: boolean = false,
     ownerId: string,
     role: UserRole,
-  ): Promise<Contact[]> {
+  ): Promise<ContactDocument[]> {
     const filters: QueryFilter<ContactDocument> = {};
 
     if (!includeInactive) {
@@ -54,7 +57,7 @@ export class ContactsService {
     includeInactive: boolean,
     ownerId: string,
     role: UserRole,
-  ): Promise<Contact> {
+  ): Promise<ContactDocument> {
     if (!Types.ObjectId.isValid(id)) {
       throw new DomainException(
         'Contact not found',
@@ -93,7 +96,7 @@ export class ContactsService {
     dto: UpdateContactDto,
     ownerId: string,
     role: UserRole,
-  ): Promise<Contact> {
+  ): Promise<ContactDocument> {
     if (!Types.ObjectId.isValid(id)) {
       throw new DomainException(
         'Contact not found',
