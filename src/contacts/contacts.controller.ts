@@ -7,12 +7,15 @@ import {
   Param,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { JwtAuthGuard } from '@auth/guard/auth.guard';
 
-@Controller('contacts')
+@Controller('admin/contacts')
+@UseGuards(JwtAuthGuard)
 export class ContactsController {
   constructor(private readonly contactsService: ContactsService) {}
 

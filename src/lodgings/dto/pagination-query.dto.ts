@@ -1,7 +1,15 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
-export class PaginationQueryDto {
+export class PublicLodgingsQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -16,7 +24,19 @@ export class PaginationQueryDto {
   limit?: number = 10;
 
   @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Type(() => String)
+  tag?: string[];
+}
+
+export class AdminLodgingsQueryDto extends PublicLodgingsQueryDto {
+  @IsOptional()
   @Type(() => Boolean)
   @IsBoolean()
-  includeInactive?: boolean = false;
+  includeInactive?: boolean = true;
 }

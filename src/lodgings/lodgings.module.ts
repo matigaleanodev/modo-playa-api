@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { LodgingsService } from './lodgings.service';
-import { LodgingsController } from './lodgings.controller';
+import { LodgingsAdminController } from './controllers/lodgings.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Lodging, LodgingSchema } from './schemas/lodging.schema';
 import { Contact, ContactSchema } from '@contacts/schemas/contact.schema';
+import { LodgingsPublicController } from './controllers/lodgings-public.controller';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { Contact, ContactSchema } from '@contacts/schemas/contact.schema';
       { name: Contact.name, schema: ContactSchema },
     ]),
   ],
-  controllers: [LodgingsController],
+  controllers: [LodgingsAdminController, LodgingsPublicController],
   providers: [LodgingsService],
 })
 export class LodgingsModule {}
