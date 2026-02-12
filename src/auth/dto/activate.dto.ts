@@ -1,9 +1,15 @@
 import { IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ActivateDto {
+  @ApiProperty({
+    example: 'admin@modoplaya.com',
+    description: 'Email o username del usuario',
+    minLength: 3,
+  })
   @IsString()
   @MinLength(3)
-  identifier!: string; // username o email
+  identifier!: string;
 }
 
 export class ForgotPasswordDto extends ActivateDto {}

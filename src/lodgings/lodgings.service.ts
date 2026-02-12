@@ -78,7 +78,16 @@ export class LodgingsService {
   async findPublicPaginated(
     query: PublicLodgingsQueryDto,
   ): Promise<PaginatedResponse<Lodging>> {
-    const { page = 1, limit = 10, search } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      city,
+      minGuests,
+      minPrice,
+      maxPrice,
+      amenities,
+    } = query;
 
     const filters: QueryFilter<LodgingDocument> = {
       active: true,
@@ -92,8 +101,23 @@ export class LodgingsService {
       ];
     }
 
-    if (query.tag && query.tag.length > 0) {
-      filters.tags = { $in: query.tag };
+    if (city) {
+      filters.city = city;
+    }
+
+    if (minGuests !== undefined) {
+      filters.maxGuests = { $gte: minGuests };
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      const priceFilter: Record<string, number> = {};
+      if (minPrice !== undefined) priceFilter.$gte = minPrice;
+      if (maxPrice !== undefined) priceFilter.$lte = maxPrice;
+      filters.price = priceFilter;
+    }
+
+    if (amenities && amenities.length > 0) {
+      filters.amenities = { $all: amenities };
     }
 
     const [data, total] = await Promise.all([
@@ -135,9 +159,13 @@ export class LodgingsService {
     ownerId: string,
     role: UserRole,
   ): Promise<PaginatedResponse<Lodging>> {
-    const { page = 1, limit = 10 } = query;
+    const { page = 1, limit = 10, includeInactive = true } = query;
 
     const filters: QueryFilter<LodgingDocument> = {};
+
+    if (!includeInactive) {
+      filters.active = true;
+    }
 
     if (role !== 'SUPERADMIN') {
       filters.ownerId = ownerId;
@@ -171,13 +199,11 @@ export class LodgingsService {
     const lodging = await this.lodgingModel.findOne(filters);
 
     if (!lodging) {
-      if (!lodging) {
-        throw new DomainException(
-          'Lodging not found',
-          ERROR_CODES.LODGING_NOT_FOUND,
-          HttpStatus.NOT_FOUND,
-        );
-      }
+      throw new DomainException(
+        'Lodging not found',
+        ERROR_CODES.LODGING_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return lodging;
@@ -262,13 +288,11 @@ export class LodgingsService {
     const lodging = await this.lodgingModel.findOneAndDelete(filters);
 
     if (!lodging) {
-      if (!lodging) {
-        throw new DomainException(
-          'Lodging not found',
-          ERROR_CODES.LODGING_NOT_FOUND,
-          HttpStatus.NOT_FOUND,
-        );
-      }
+      throw new DomainException(
+        'Lodging not found',
+        ERROR_CODES.LODGING_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return { deleted: true };
