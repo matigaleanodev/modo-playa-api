@@ -53,6 +53,7 @@
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
     "jest": "^30.0.0",
@@ -87,7 +88,8 @@
       "^@lodgings/(.*)$": "<rootDir>/src/lodgings/$1",
       "^@auth/(.*)$": "<rootDir>/src/auth/$1",
       "^@users/(.*)$": "<rootDir>/src/users/$1",
-      "^@common/(.*)$": "<rootDir>/src/common/$1"
+      "^@common/(.*)$": "<rootDir>/src/common/$1",
+      "^@mail/(.*)$": "<rootDir>/src/mail/$1"
     }
   }
 }

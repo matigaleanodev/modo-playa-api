@@ -1,18 +1,172 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { RequestUser } from './interfaces/request-user.interface';
 
 describe('AuthController', () => {
   let controller: AuthController;
 
+  const mockAuthService = {
+    activate: jest.fn(),
+    setPassword: jest.fn(),
+    login: jest.fn(),
+    refresh: jest.fn(),
+    changePassword: jest.fn(),
+    forgotPassword: jest.fn(),
+    verifyResetCode: jest.fn(),
+    resetPassword: jest.fn(),
+  };
+
+  const mockUser: RequestUser = {
+    userId: 'user1',
+    ownerId: 'owner1',
+    role: 'OWNER',
+    purpose: 'ACCESS',
+  };
+
+  const mockRequest = {
+    user: mockUser,
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
+      providers: [
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
+        },
+      ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // -------------------------
+  // ACTIVATE
+  // -------------------------
+
+  it('debe delegar activate', async () => {
+    mockAuthService.activate.mockResolvedValue({ accessToken: 'token' });
+
+    const dto = { identifier: 'test@test.com' };
+
+    const result = await controller.activate(dto);
+
+    expect(mockAuthService.activate).toHaveBeenCalledWith(dto);
+    expect(result).toEqual({ accessToken: 'token' });
+  });
+
+  // -------------------------
+  // LOGIN
+  // -------------------------
+
+  it('debe delegar login', async () => {
+    mockAuthService.login.mockResolvedValue({
+      accessToken: 'a',
+      refreshToken: 'b',
+    });
+
+    const dto = { identifier: 'x', password: '1234' };
+
+    const result = await controller.login(dto);
+
+    expect(mockAuthService.login).toHaveBeenCalledWith(dto);
+    expect(result).toBeDefined();
+  });
+
+  // -------------------------
+  // SET PASSWORD
+  // -------------------------
+
+  it('debe delegar setPassword', async () => {
+    const dto = { password: '1234' };
+
+    mockAuthService.setPassword.mockResolvedValue({});
+
+    const result = await controller.setPassword(mockRequest, dto);
+
+    expect(mockAuthService.setPassword).toHaveBeenCalledWith(mockUser, dto);
+
+    expect(result).toEqual({});
+  });
+
+  // -------------------------
+  // REFRESH
+  // -------------------------
+
+  it('debe delegar refresh', async () => {
+    mockAuthService.refresh.mockResolvedValue({});
+
+    const result = await controller.refresh(mockRequest);
+
+    expect(mockAuthService.refresh).toHaveBeenCalledWith(mockUser);
+    expect(result).toEqual({});
+  });
+
+  // -------------------------
+  // CHANGE PASSWORD
+  // -------------------------
+
+  it('debe delegar changePassword', async () => {
+    const dto = { currentPassword: 'old', newPassword: 'new' };
+
+    mockAuthService.changePassword.mockResolvedValue({});
+
+    const result = await controller.changePassword(mockRequest, dto);
+
+    expect(mockAuthService.changePassword).toHaveBeenCalledWith(mockUser, dto);
+
+    expect(result).toEqual({});
+  });
+
+  // -------------------------
+  // FORGOT PASSWORD
+  // -------------------------
+
+  it('debe delegar forgotPassword', async () => {
+    const dto = { identifier: 'test@test.com' };
+
+    mockAuthService.forgotPassword.mockResolvedValue({ message: 'ok' });
+
+    const result = await controller.forgotPassword(dto);
+
+    expect(mockAuthService.forgotPassword).toHaveBeenCalledWith(dto);
+    expect(result).toEqual({ message: 'ok' });
+  });
+
+  // -------------------------
+  // VERIFY RESET CODE
+  // -------------------------
+
+  it('debe delegar verifyResetCode', async () => {
+    const dto = { identifier: 'test', code: '123456' };
+
+    mockAuthService.verifyResetCode.mockResolvedValue({ accessToken: 'x' });
+
+    const result = await controller.verifyResetCode(dto);
+
+    expect(mockAuthService.verifyResetCode).toHaveBeenCalledWith(dto);
+    expect(result).toEqual({ accessToken: 'x' });
+  });
+
+  // -------------------------
+  // RESET PASSWORD
+  // -------------------------
+
+  it('debe delegar resetPassword', async () => {
+    const dto = { password: '1234' };
+
+    mockAuthService.resetPassword.mockResolvedValue({ message: 'ok' });
+
+    const result = await controller.resetPassword(mockRequest, dto);
+
+    expect(mockAuthService.resetPassword).toHaveBeenCalledWith(mockUser, dto);
+
+    expect(result).toEqual({ message: 'ok' });
   });
 });

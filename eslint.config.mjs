@@ -3,10 +3,14 @@ import eslint from '@eslint/js';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import importPlugin from 'eslint-plugin-import';
 
 export default tseslint.config(
   {
     ignores: ['eslint.config.mjs'],
+    plugins: {
+      import: importPlugin,
+    },
     settings: {
       'import/resolver': {
         typescript: {
@@ -31,7 +35,6 @@ export default tseslint.config(
       },
     },
   },
-
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
