@@ -23,7 +23,7 @@ describe('UsersController', () => {
     purpose: 'ACCESS',
   };
 
-  const mockRequest: Request & { user: RequestUser } = {
+  const mockRequest = {
     user: mockUser,
   } as Request & { user: RequestUser };
 
@@ -45,19 +45,18 @@ describe('UsersController', () => {
     jest.clearAllMocks();
   });
 
-  // -------------------------
-  // CREATE
-  // -------------------------
-
   it('debe delegar createUser con ownerId y role del JWT', async () => {
     const dto: CreateUserDto = {
       email: 'test@mail.com',
       username: 'test',
     };
 
-    const expected = { id: '1' };
-
-    mockService.createUser.mockResolvedValue(expected);
+    mockService.createUser.mockResolvedValue({
+      _id: '1',
+      email: dto.email,
+      username: dto.username,
+      isPasswordSet: false,
+    });
 
     const result = await controller.createUser(dto, mockRequest);
 
@@ -67,33 +66,34 @@ describe('UsersController', () => {
       dto,
     );
 
-    expect(result).toEqual(expected);
+    expect(result.id).toBe('1');
+    expect(result.email).toBe(dto.email);
   });
 
-  // -------------------------
-  // FIND ALL
-  // -------------------------
-
   it('debe delegar findAllByOwner con ownerId del JWT', async () => {
-    const expected = [];
-
-    mockService.findAllByOwner.mockResolvedValue(expected);
+    mockService.findAllByOwner.mockResolvedValue([
+      {
+        _id: '1',
+        email: 'a@mail.com',
+        username: 'a',
+        isPasswordSet: true,
+      },
+    ]);
 
     const result = await controller.findAll(mockRequest);
 
     expect(mockService.findAllByOwner).toHaveBeenCalledWith(mockUser.ownerId);
 
-    expect(result).toEqual(expected);
+    expect(result[0].id).toBe('1');
   });
 
-  // -------------------------
-  // FIND BY ID
-  // -------------------------
-
   it('debe delegar findById con ownerId del JWT', async () => {
-    const expected = { id: 'user-id' };
-
-    mockService.findById.mockResolvedValue(expected);
+    mockService.findById.mockResolvedValue({
+      _id: 'user-id',
+      email: 'test@mail.com',
+      username: 'test',
+      isPasswordSet: true,
+    });
 
     const result = await controller.findById('user-id', mockRequest);
 
@@ -102,21 +102,21 @@ describe('UsersController', () => {
       'user-id',
     );
 
-    expect(result).toEqual(expected);
+    expect(result.id).toBe('user-id');
   });
-
-  // -------------------------
-  // UPDATE
-  // -------------------------
 
   it('debe delegar updateUser con ownerId del JWT', async () => {
     const dto: UpdateUserDto = {
       firstName: 'Juan',
     };
 
-    const expected = { firstName: 'Juan' };
-
-    mockService.updateUser.mockResolvedValue(expected);
+    mockService.updateUser.mockResolvedValue({
+      _id: 'user-id',
+      email: 'test@mail.com',
+      username: 'test',
+      firstName: 'Juan',
+      isPasswordSet: true,
+    });
 
     const result = await controller.updateUser('user-id', dto, mockRequest);
 
@@ -126,6 +126,7 @@ describe('UsersController', () => {
       dto,
     );
 
-    expect(result).toEqual(expected);
+    expect(result.id).toBe('user-id');
+    expect(result.firstName).toBe('Juan');
   });
 });

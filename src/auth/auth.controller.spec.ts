@@ -46,10 +46,6 @@ describe('AuthController', () => {
     jest.clearAllMocks();
   });
 
-  // -------------------------
-  // ACTIVATE
-  // -------------------------
-
   it('debe delegar activate', async () => {
     mockAuthService.activate.mockResolvedValue({ accessToken: 'token' });
 
@@ -60,10 +56,6 @@ describe('AuthController', () => {
     expect(mockAuthService.activate).toHaveBeenCalledWith(dto);
     expect(result).toEqual({ accessToken: 'token' });
   });
-
-  // -------------------------
-  // LOGIN
-  // -------------------------
 
   it('debe delegar login', async () => {
     mockAuthService.login.mockResolvedValue({
@@ -79,10 +71,6 @@ describe('AuthController', () => {
     expect(result).toBeDefined();
   });
 
-  // -------------------------
-  // SET PASSWORD
-  // -------------------------
-
   it('debe delegar setPassword', async () => {
     const dto = { password: '1234' };
 
@@ -95,10 +83,6 @@ describe('AuthController', () => {
     expect(result).toEqual({});
   });
 
-  // -------------------------
-  // REFRESH
-  // -------------------------
-
   it('debe delegar refresh', async () => {
     mockAuthService.refresh.mockResolvedValue({});
 
@@ -107,10 +91,6 @@ describe('AuthController', () => {
     expect(mockAuthService.refresh).toHaveBeenCalledWith(mockUser);
     expect(result).toEqual({});
   });
-
-  // -------------------------
-  // CHANGE PASSWORD
-  // -------------------------
 
   it('debe delegar changePassword', async () => {
     const dto = { currentPassword: 'old', newPassword: 'new' };
@@ -124,10 +104,6 @@ describe('AuthController', () => {
     expect(result).toEqual({});
   });
 
-  // -------------------------
-  // FORGOT PASSWORD
-  // -------------------------
-
   it('debe delegar forgotPassword', async () => {
     const dto = { identifier: 'test@test.com' };
 
@@ -139,10 +115,6 @@ describe('AuthController', () => {
     expect(result).toEqual({ message: 'ok' });
   });
 
-  // -------------------------
-  // VERIFY RESET CODE
-  // -------------------------
-
   it('debe delegar verifyResetCode', async () => {
     const dto = { identifier: 'test', code: '123456' };
 
@@ -153,10 +125,6 @@ describe('AuthController', () => {
     expect(mockAuthService.verifyResetCode).toHaveBeenCalledWith(dto);
     expect(result).toEqual({ accessToken: 'x' });
   });
-
-  // -------------------------
-  // RESET PASSWORD
-  // -------------------------
 
   it('debe delegar resetPassword', async () => {
     const dto = { password: '1234' };

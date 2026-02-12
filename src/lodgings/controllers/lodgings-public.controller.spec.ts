@@ -5,7 +5,6 @@ import { PublicLodgingsQueryDto } from '@lodgings/dto/pagination-query.dto';
 
 describe('LodgingsPublicController', () => {
   let controller: LodgingsPublicController;
-  let service: LodgingsService;
 
   const mockLodgingsService = {
     findPublicPaginated: jest.fn(),
@@ -24,7 +23,6 @@ describe('LodgingsPublicController', () => {
     }).compile();
 
     controller = module.get<LodgingsPublicController>(LodgingsPublicController);
-    service = module.get<LodgingsService>(LodgingsService);
   });
 
   afterEach(() => {
@@ -41,8 +39,13 @@ describe('LodgingsPublicController', () => {
       };
 
       const mockResponse = {
-        data: [],
-        total: 0,
+        data: [
+          {
+            _id: '1',
+            title: 'Cabaña Mar Azul',
+          },
+        ],
+        total: 1,
         page: 1,
         limit: 10,
       };
@@ -51,8 +54,33 @@ describe('LodgingsPublicController', () => {
 
       const result = await controller.findAll(query);
 
-      expect(service.findPublicPaginated).toHaveBeenCalledWith(query);
-      expect(result).toEqual(mockResponse);
+      expect(mockLodgingsService.findPublicPaginated).toHaveBeenCalledWith(
+        query,
+      );
+
+      expect(result).toEqual({
+        ...mockResponse,
+        data: [
+          {
+            id: '1',
+            title: 'Cabaña Mar Azul',
+            description: undefined,
+            location: undefined,
+            city: undefined,
+            type: undefined,
+            price: undefined,
+            priceUnit: undefined,
+            maxGuests: undefined,
+            bedrooms: undefined,
+            bathrooms: undefined,
+            minNights: undefined,
+            distanceToBeach: undefined,
+            amenities: undefined,
+            mainImage: undefined,
+            images: undefined,
+          },
+        ],
+      });
     });
   });
 
@@ -60,14 +88,35 @@ describe('LodgingsPublicController', () => {
     it('debe llamar a findPublicById con el id recibido', async () => {
       const id = '123abc';
 
-      const mockLodging = { _id: id, title: 'Cabaña Mar Azul' };
+      const mockLodging = {
+        _id: id,
+        title: 'Cabaña Mar Azul',
+      };
 
       mockLodgingsService.findPublicById.mockResolvedValue(mockLodging);
 
       const result = await controller.findOne(id);
 
-      expect(service.findPublicById).toHaveBeenCalledWith(id);
-      expect(result).toEqual(mockLodging);
+      expect(mockLodgingsService.findPublicById).toHaveBeenCalledWith(id);
+
+      expect(result).toEqual({
+        id,
+        title: 'Cabaña Mar Azul',
+        description: undefined,
+        location: undefined,
+        city: undefined,
+        type: undefined,
+        price: undefined,
+        priceUnit: undefined,
+        maxGuests: undefined,
+        bedrooms: undefined,
+        bathrooms: undefined,
+        minNights: undefined,
+        distanceToBeach: undefined,
+        amenities: undefined,
+        mainImage: undefined,
+        images: undefined,
+      });
     });
   });
 });

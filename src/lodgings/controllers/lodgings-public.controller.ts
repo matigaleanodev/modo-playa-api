@@ -9,13 +9,14 @@ import {
 
 import { LodgingsService } from '../lodgings.service';
 import { PublicLodgingsQueryDto } from '../dto/pagination-query.dto';
-import { Lodging } from '../schemas/lodging.schema';
 import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
 
 import {
   PUBLIC_LODGING_RESPONSE_EXAMPLE,
   PUBLIC_PAGINATED_RESPONSE_EXAMPLE,
 } from '../swagger/lodgings-public.swagger';
+import { LodgingMapper } from '@lodgings/mappers/lodgings.mapper';
+import { LodgingResponseDto } from '@lodgings/dto/lodging-response.dto';
 
 @ApiTags('Public - Lodgings')
 @Controller('lodgings')
@@ -58,10 +59,15 @@ export class LodgingsPublicController {
     schema: { example: PUBLIC_PAGINATED_RESPONSE_EXAMPLE },
   })
   @Get()
-  findAll(
+  async findAll(
     @Query() query: PublicLodgingsQueryDto,
-  ): Promise<PaginatedResponse<Lodging>> {
-    return this.lodgingsService.findPublicPaginated(query);
+  ): Promise<PaginatedResponse<LodgingResponseDto>> {
+    const result = await this.lodgingsService.findPublicPaginated(query);
+
+    return {
+      ...result,
+      data: result.data.map((lodging) => LodgingMapper.toResponse(lodging)),
+    };
   }
 
   @ApiOperation({
@@ -84,7 +90,8 @@ export class LodgingsPublicController {
     description: 'Alojamiento no encontrado',
   })
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<Lodging> {
-    return this.lodgingsService.findPublicById(id);
+  async findOne(@Param('id') id: string): Promise<LodgingResponseDto> {
+    const lodging = await this.lodgingsService.findPublicById(id);
+    return LodgingMapper.toResponse(lodging);
   }
 }

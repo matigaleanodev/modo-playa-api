@@ -4,10 +4,11 @@ import { LodgingsService } from '../lodgings.service';
 import { CreateLodgingDto } from '../dto/create-lodging.dto';
 import { UpdateLodgingDto } from '../dto/update-lodging.dto';
 import { AdminLodgingsQueryDto } from '@lodgings/dto/pagination-query.dto';
+import { Request } from 'express';
+import { RequestUser } from '@auth/interfaces/request-user.interface';
 
 describe('LodgingsAdminController', () => {
   let controller: LodgingsAdminController;
-  let service: LodgingsService;
 
   const mockService = {
     create: jest.fn(),
@@ -17,12 +18,16 @@ describe('LodgingsAdminController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      ownerId: 'owner1',
-      role: 'OWNER',
-    },
+  const mockUser: RequestUser = {
+    userId: 'u1',
+    ownerId: 'owner1',
+    role: 'OWNER',
+    purpose: 'ACCESS',
   };
+
+  const mockRequest = {
+    user: mockUser,
+  } as Request & { user: RequestUser };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -36,105 +41,98 @@ describe('LodgingsAdminController', () => {
     }).compile();
 
     controller = module.get<LodgingsAdminController>(LodgingsAdminController);
-    service = module.get<LodgingsService>(LodgingsService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  // -------------------------
-  // CREATE
-  // -------------------------
-
   it('debe llamar a create con ownerId', async () => {
     const dto = {} as CreateLodgingDto;
-    const expected = { _id: '1' };
 
-    mockService.create.mockResolvedValue(expected);
+    mockService.create.mockResolvedValue({
+      _id: '1',
+      title: 'Test',
+    });
 
     const result = await controller.create(dto, mockRequest);
 
-    expect(service.create).toHaveBeenCalledWith(dto, mockRequest.user.ownerId);
-    expect(result).toEqual(expected);
-  });
+    expect(mockService.create).toHaveBeenCalledWith(dto, mockUser.ownerId);
 
-  // -------------------------
-  // FIND ALL
-  // -------------------------
+    expect(result.id).toBe('1');
+    expect(result.title).toBe('Test');
+  });
 
   it('debe llamar a findAdminPaginated con ownerId y role', async () => {
     const query = {} as AdminLodgingsQueryDto;
-    const expected = { data: [], total: 0, page: 1, limit: 10 };
 
-    mockService.findAdminPaginated.mockResolvedValue(expected);
+    mockService.findAdminPaginated.mockResolvedValue({
+      data: [{ _id: '1', title: 'Test' }],
+      total: 1,
+      page: 1,
+      limit: 10,
+    });
 
     const result = await controller.findAll(query, mockRequest);
 
-    expect(service.findAdminPaginated).toHaveBeenCalledWith(
+    expect(mockService.findAdminPaginated).toHaveBeenCalledWith(
       query,
-      mockRequest.user.ownerId,
-      mockRequest.user.role,
+      mockUser.ownerId,
+      mockUser.role,
     );
-    expect(result).toEqual(expected);
+
+    expect(result.data[0].id).toBe('1');
   });
 
-  // -------------------------
-  // FIND ONE
-  // -------------------------
-
   it('debe llamar a findAdminById con ownerId y role', async () => {
-    const expected = { _id: '1' };
-
-    mockService.findAdminById.mockResolvedValue(expected);
+    mockService.findAdminById.mockResolvedValue({
+      _id: '1',
+      title: 'Test',
+    });
 
     const result = await controller.findOne('1', mockRequest);
 
-    expect(service.findAdminById).toHaveBeenCalledWith(
+    expect(mockService.findAdminById).toHaveBeenCalledWith(
       '1',
-      mockRequest.user.ownerId,
-      mockRequest.user.role,
+      mockUser.ownerId,
+      mockUser.role,
     );
-    expect(result).toEqual(expected);
-  });
 
-  // -------------------------
-  // UPDATE
-  // -------------------------
+    expect(result.id).toBe('1');
+  });
 
   it('debe llamar a update con ownerId y role', async () => {
     const dto = {} as UpdateLodgingDto;
-    const expected = { _id: '1' };
 
-    mockService.update.mockResolvedValue(expected);
+    mockService.update.mockResolvedValue({
+      _id: '1',
+      title: 'Updated',
+    });
 
     const result = await controller.update('1', dto, mockRequest);
 
-    expect(service.update).toHaveBeenCalledWith(
+    expect(mockService.update).toHaveBeenCalledWith(
       '1',
       dto,
-      mockRequest.user.ownerId,
-      mockRequest.user.role,
+      mockUser.ownerId,
+      mockUser.role,
     );
-    expect(result).toEqual(expected);
+
+    expect(result.id).toBe('1');
+    expect(result.title).toBe('Updated');
   });
 
-  // -------------------------
-  // REMOVE
-  // -------------------------
-
   it('debe llamar a remove con ownerId y role', async () => {
-    const expected = { deleted: true };
-
-    mockService.remove.mockResolvedValue(expected);
+    mockService.remove.mockResolvedValue({ deleted: true });
 
     const result = await controller.remove('1', mockRequest);
 
-    expect(service.remove).toHaveBeenCalledWith(
+    expect(mockService.remove).toHaveBeenCalledWith(
       '1',
-      mockRequest.user.ownerId,
-      mockRequest.user.role,
+      mockUser.ownerId,
+      mockUser.role,
     );
-    expect(result).toEqual(expected);
+
+    expect(result).toEqual({ deleted: true });
   });
 });

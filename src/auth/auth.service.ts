@@ -471,6 +471,23 @@ export class AuthService {
     };
   }
 
+  async me(user: RequestUser): Promise<AuthUserResponse> {
+    const dbUser = await this.usersService.findById(user.ownerId, user.userId);
+
+    const role = this.resolveUserRole(dbUser);
+
+    return {
+      id: dbUser._id.toString(),
+      email: dbUser.email,
+      username: dbUser.username,
+      firstName: dbUser.firstName,
+      lastName: dbUser.lastName,
+      displayName: dbUser.displayName,
+      avatarUrl: dbUser.avatarUrl,
+      role,
+    };
+  }
+
   private resolveUserRole(user: UserDocument): 'OWNER' | 'SUPERADMIN' {
     const superadminId = this.configService.get<string>('SUPERADMIN_ID');
 
