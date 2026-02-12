@@ -1,5 +1,11 @@
 import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
 import { ActivateDto, ForgotPasswordDto } from './dto/activate.dto';
@@ -47,6 +53,7 @@ export class AuthController {
     description: 'Login automático tras setear contraseña',
     schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE },
   })
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Post('set-password')
   setPassword(
@@ -78,6 +85,7 @@ export class AuthController {
     description: 'Tokens renovados',
     schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE },
   })
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Post('refresh')
   refresh(@Request() req: { user: RequestUser }) {
@@ -93,6 +101,7 @@ export class AuthController {
     description: 'Contraseña actualizada y tokens renovados',
     schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE },
   })
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   changePassword(
@@ -141,6 +150,7 @@ export class AuthController {
     description: 'Contraseña actualizada correctamente',
     schema: { example: RESET_PASSWORD_RESPONSE_EXAMPLE },
   })
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Post('reset-password')
   resetPassword(

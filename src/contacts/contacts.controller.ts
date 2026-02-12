@@ -17,6 +17,7 @@ import {
   ApiResponse,
   ApiQuery,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 
 import { ContactsService } from './contacts.service';
@@ -33,6 +34,7 @@ import {
 } from './contacts.swagger';
 
 @ApiTags('Admin - Contacts')
+@ApiBearerAuth('access-token')
 @Controller('admin/contacts')
 @UseGuards(JwtAuthGuard)
 export class ContactsController {
