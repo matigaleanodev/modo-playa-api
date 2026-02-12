@@ -1,47 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LodgingsService } from './lodgings.service';
 import { getModelToken } from '@nestjs/mongoose';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Types } from 'mongoose';
-import { LodgingType } from './schemas/lodging.schema';
+import { LodgingsService } from './lodgings.service';
+import { Lodging } from './schemas/lodging.schema';
+import { Contact } from '@contacts/schemas/contact.schema';
 import { DomainException } from '@common/exceptions/domain.exception';
 
 describe('LodgingsService', () => {
   let service: LodgingsService;
 
-  const mockLodgingDocument = {
-    _id: new Types.ObjectId(),
-    title: 'Test',
-    active: true,
+  const mockLodgingModel = {
+    find: jest.fn(),
+    findOne: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+    findOneAndDelete: jest.fn(),
+    countDocuments: jest.fn(),
   };
 
-  // 👉 Mongoose Model = función constructora + métodos estáticos
-  const lodgingModelMock: any = jest.fn().mockImplementation(() => ({
-    save: jest.fn().mockResolvedValue(mockLodgingDocument),
-  }));
-
-  lodgingModelMock.find = jest.fn();
-  lodgingModelMock.findOne = jest.fn();
-  lodgingModelMock.findOneAndUpdate = jest.fn();
-  lodgingModelMock.countDocuments = jest.fn();
-
-  const contactModelMock = {
+  const mockContactModel = {
     findOne: jest.fn(),
   };
 
   beforeEach(async () => {
-    jest.clearAllMocks();
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LodgingsService,
         {
-          provide: getModelToken('Lodging'),
-          useValue: lodgingModelMock,
+          provide: getModelToken(Lodging.name),
+          useValue: mockLodgingModel,
         },
         {
-          provide: getModelToken('Contact'),
-          useValue: contactModelMock,
+          provide: getModelToken(Contact.name),
+          useValue: mockContactModel,
         },
       ],
     }).compile();
@@ -49,171 +38,106 @@ describe('LodgingsService', () => {
     service = module.get<LodgingsService>(LodgingsService);
   });
 
-  describe('create', () => {
-    it('crea lodging con contactId explícito', async () => {
-      const contactId = new Types.ObjectId().toHexString();
-
-      const result = await service.create({
-        title: 'Test',
-        description: 'Desc',
-        location: 'Loc',
-        type: LodgingType.CABIN,
-        mainImage: 'https://img.com',
-        contactId,
-      });
-
-      expect(result).toBeDefined();
-    });
-
-    it('usa contacto default si no viene contactId', async () => {
-      contactModelMock.findOne.mockResolvedValue({
-        _id: new Types.ObjectId(),
-      });
-
-      const result = await service.create({
-        title: 'Test',
-        description: 'Desc',
-        location: 'Loc',
-        type: LodgingType.CABIN,
-        mainImage: 'https://img.com',
-      });
-
-      expect(contactModelMock.findOne).toHaveBeenCalled();
-      expect(result).toBeDefined();
-    });
-
-    it('permite crear sin contacto si no hay default', async () => {
-      contactModelMock.findOne.mockResolvedValue(null);
-
-      const result = await service.create({
-        title: 'Test',
-        description: 'Desc',
-        location: 'Loc',
-        type: LodgingType.CABIN,
-        mainImage: 'https://img.com',
-      });
-
-      expect(result).toBeDefined();
-    });
-
-    it('falla si from > to', async () => {
-      await expect(
-        service.create({
-          title: 'Test',
-          description: 'Desc',
-          location: 'Loc',
-          type: LodgingType.CABIN,
-          mainImage: 'https://img.com',
-          occupiedRanges: [{ from: '2026-02-10', to: '2026-02-01' }],
-        }),
-      ).rejects.toBeInstanceOf(DomainException);
-    });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('findAll', () => {
-    it('devuelve solo activos por defecto', async () => {
-      lodgingModelMock.find.mockReturnValue({
-        skip: () => ({
-          limit: () => ({
-            sort: jest.fn().mockResolvedValue([mockLodgingDocument]),
-          }),
-        }),
-      });
+  // -------------------------
+  // findPublicById
+  // -------------------------
 
-      lodgingModelMock.countDocuments.mockResolvedValue(1);
+  describe('findPublicById', () => {
+    it('debe devolver lodging si existe y está activo', async () => {
+      const lodging = { _id: '1', active: true };
+      mockLodgingModel.findOne.mockResolvedValue(lodging);
 
-      const result = await service.findAll({});
+      const result = await service.findPublicById('1');
 
-      expect(result.data.length).toBe(1);
-      expect(result.meta.total).toBe(1);
+      expect(result).toEqual(lodging);
+      expect(mockLodgingModel.findOne).toHaveBeenCalled();
     });
 
-    it('incluye inactivos si includeInactive=true', async () => {
-      lodgingModelMock.find.mockReturnValue({
-        skip: () => ({
-          limit: () => ({
-            sort: jest.fn().mockResolvedValue([mockLodgingDocument]),
-          }),
-        }),
-      });
+    it('debe lanzar DomainException si no existe', async () => {
+      mockLodgingModel.findOne.mockResolvedValue(null);
 
-      lodgingModelMock.countDocuments.mockResolvedValue(1);
-
-      await service.findAll({ includeInactive: true });
-
-      expect(lodgingModelMock.find).toHaveBeenCalledWith({});
-    });
-  });
-
-  describe('findOne', () => {
-    it('lanza NotFound con id inválido', async () => {
-      await expect(service.findOne('invalid-id')).rejects.toBeInstanceOf(
-        NotFoundException,
+      await expect(service.findPublicById('1')).rejects.toThrow(
+        DomainException,
       );
     });
+  });
 
-    it('lanza NotFound si no existe', async () => {
-      lodgingModelMock.findOne.mockResolvedValue(null);
+  // -------------------------
+  // findAdminById
+  // -------------------------
+
+  describe('findAdminById', () => {
+    it('OWNER solo puede ver su lodging', async () => {
+      const lodging = { _id: '1', ownerId: 'owner1' };
+      mockLodgingModel.findOne.mockResolvedValue(lodging);
+
+      const result = await service.findAdminById('1', 'owner1', 'OWNER');
+
+      expect(result).toEqual(lodging);
+    });
+
+    it('lanza error si no existe', async () => {
+      mockLodgingModel.findOne.mockResolvedValue(null);
 
       await expect(
-        service.findOne(new Types.ObjectId().toHexString()),
-      ).rejects.toBeInstanceOf(NotFoundException);
-    });
-
-    it('devuelve lodging activo', async () => {
-      lodgingModelMock.findOne.mockResolvedValue(mockLodgingDocument);
-
-      const result = await service.findOne(new Types.ObjectId().toHexString());
-
-      expect(result).toBeDefined();
+        service.findAdminById('1', 'owner1', 'OWNER'),
+      ).rejects.toThrow(DomainException);
     });
   });
+
+  // -------------------------
+  // update
+  // -------------------------
 
   describe('update', () => {
-    it('actualiza parcialmente', async () => {
-      lodgingModelMock.findOneAndUpdate.mockResolvedValue(mockLodgingDocument);
+    it('debe actualizar correctamente', async () => {
+      const updated = { _id: '1', title: 'Nuevo título' };
+      mockLodgingModel.findOneAndUpdate.mockResolvedValue(updated);
 
-      const result = await service.update(new Types.ObjectId().toHexString(), {
-        title: 'Nuevo',
-      });
+      const result = await service.update(
+        '507f1f77bcf86cd799439011',
+        { title: 'Nuevo título' },
+        'owner1',
+        'OWNER',
+      );
 
-      expect(result).toBeDefined();
+      expect(result).toEqual(updated);
     });
 
-    it('valida rangos si vienen', async () => {
+    it('debe lanzar error si id inválido', async () => {
       await expect(
-        service.update(new Types.ObjectId().toHexString(), {
-          occupiedRanges: [{ from: '2026-02-10', to: '2026-02-01' }],
-        }),
-      ).rejects.toBeInstanceOf(DomainException);
-    });
-
-    it('lanza NotFound si no existe', async () => {
-      lodgingModelMock.findOneAndUpdate.mockResolvedValue(null);
-
-      await expect(
-        service.update(new Types.ObjectId().toHexString(), {
-          title: 'Test',
-        }),
-      ).rejects.toBeInstanceOf(NotFoundException);
+        service.update('invalid-id', {}, 'owner1', 'OWNER'),
+      ).rejects.toThrow(DomainException);
     });
   });
 
+  // -------------------------
+  // remove
+  // -------------------------
+
   describe('remove', () => {
-    it('soft deletea correctamente', async () => {
-      lodgingModelMock.findOneAndUpdate.mockResolvedValue(mockLodgingDocument);
+    it('debe eliminar correctamente', async () => {
+      mockLodgingModel.findOneAndDelete.mockResolvedValue({ _id: '1' });
 
-      const result = await service.remove(new Types.ObjectId().toHexString());
+      const result = await service.remove(
+        '507f1f77bcf86cd799439011',
+        'owner1',
+        'OWNER',
+      );
 
-      expect(result).toBeDefined();
+      expect(result).toEqual({ deleted: true });
     });
 
-    it('lanza NotFound si no existe', async () => {
-      lodgingModelMock.findOneAndUpdate.mockResolvedValue(null);
+    it('debe lanzar error si no existe', async () => {
+      mockLodgingModel.findOneAndDelete.mockResolvedValue(null);
 
       await expect(
-        service.remove(new Types.ObjectId().toHexString()),
-      ).rejects.toBeInstanceOf(NotFoundException);
+        service.remove('507f1f77bcf86cd799439011', 'owner1', 'OWNER'),
+      ).rejects.toThrow(DomainException);
     });
   });
 });

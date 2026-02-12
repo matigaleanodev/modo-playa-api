@@ -1,14 +1,19 @@
-import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { CreateLodgingDto } from './dto/create-lodging.dto';
 import { UpdateLodgingDto } from './dto/update-lodging.dto';
 import { Contact, ContactDocument } from '@contacts/schemas/contact.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, Types, QueryFilter } from 'mongoose';
 import { Lodging, LodgingDocument } from './schemas/lodging.schema';
-import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { AvailabilityRangeDto } from './dto/availability-range.dto';
 import { DomainException } from '@common/exceptions/domain.exception';
 import { ERROR_CODES } from '@common/constants/error-code';
+import {
+  AdminLodgingsQueryDto,
+  PublicLodgingsQueryDto,
+} from './dto/pagination-query.dto';
+import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
+import { UserRole } from '@common/interfaces/role.interface';
 
 @Injectable()
 export class LodgingsService {
@@ -20,15 +25,38 @@ export class LodgingsService {
     private readonly contactModel: Model<ContactDocument>,
   ) {}
 
-  async create(dto: CreateLodgingDto): Promise<Lodging> {
+  async create(dto: CreateLodgingDto, ownerId: string): Promise<Lodging> {
     this.validateRanges(dto.occupiedRanges);
 
     let contactId: Types.ObjectId | undefined;
 
     if (dto.contactId) {
-      contactId = new Types.ObjectId(dto.contactId);
+      if (!Types.ObjectId.isValid(dto.contactId)) {
+        throw new DomainException(
+          'Invalid contact id',
+          ERROR_CODES.INVALID_OBJECT_ID,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const contact = await this.contactModel.findOne({
+        _id: dto.contactId,
+        ownerId,
+        active: true,
+      });
+
+      if (!contact) {
+        throw new DomainException(
+          'Contact not found or not allowed',
+          ERROR_CODES.CONTACT_NOT_ALLOWED,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      contactId = contact._id;
     } else {
       const defaultContact = await this.contactModel.findOne({
+        ownerId,
         isDefault: true,
         active: true,
       });
@@ -40,116 +68,210 @@ export class LodgingsService {
 
     const lodging = new this.lodgingModel({
       ...dto,
+      ownerId,
       contactId,
     });
 
     return lodging.save();
   }
 
-  async findAll(query: PaginationQueryDto) {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 10;
-    const skip = (page - 1) * limit;
+  async findPublicPaginated(
+    query: PublicLodgingsQueryDto,
+  ): Promise<PaginatedResponse<Lodging>> {
+    const { page = 1, limit = 10, search } = query;
 
-    const filter = query.includeInactive ? {} : { active: true };
+    const filters: QueryFilter<LodgingDocument> = {
+      active: true,
+    };
+
+    if (search) {
+      filters.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { tags: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    if (query.tag && query.tag.length > 0) {
+      filters.tags = { $in: query.tag };
+    }
 
     const [data, total] = await Promise.all([
       this.lodgingModel
-        .find(filter)
-        .skip(skip)
+        .find(filters)
+        .skip((page - 1) * limit)
         .limit(limit)
         .sort({ createdAt: -1 }),
-      this.lodgingModel.countDocuments(filter),
+      this.lodgingModel.countDocuments(filters),
     ]);
 
     return {
       data,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasNextPage: skip + data.length < total,
-      },
+      total,
+      page,
+      limit,
     };
   }
 
-  async findOne(id: string, includeInactive = false) {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException('Lodging not found');
-    }
-
-    const filter = includeInactive ? { _id: id } : { _id: id, active: true };
-
-    const lodging = await this.lodgingModel.findOne(filter);
+  async findPublicById(id: string): Promise<Lodging> {
+    const lodging = await this.lodgingModel.findOne({
+      _id: id,
+      active: true,
+    });
 
     if (!lodging) {
-      throw new NotFoundException('Lodging not found');
+      throw new DomainException(
+        'Lodging not found',
+        ERROR_CODES.LODGING_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return lodging;
   }
 
-  async update(id: string, dto: UpdateLodgingDto, includeInactive = false) {
-    if (dto.occupiedRanges !== undefined) {
-      this.validateRanges(dto.occupiedRanges);
+  async findAdminPaginated(
+    query: AdminLodgingsQueryDto,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<PaginatedResponse<Lodging>> {
+    const { page = 1, limit = 10 } = query;
+
+    const filters: QueryFilter<LodgingDocument> = {};
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = ownerId;
     }
 
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException('Lodging not found');
+    const [data, total] = await Promise.all([
+      this.lodgingModel
+        .find(filters)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1 }),
+      this.lodgingModel.countDocuments(filters),
+    ]);
+
+    return { data, total, page, limit };
+  }
+
+  async findAdminById(
+    id: string,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<Lodging> {
+    const filters: QueryFilter<LodgingDocument> = {
+      _id: id,
+    };
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = ownerId;
     }
 
-    let contactId = dto.contactId
-      ? new Types.ObjectId(dto.contactId)
-      : undefined;
+    const lodging = await this.lodgingModel.findOne(filters);
 
-    if (!contactId && dto.contactId === undefined) {
-      const defaultContact = await this.contactModel.findOne({
-        isDefault: true,
-        active: true,
-      });
-
-      if (defaultContact) {
-        contactId = defaultContact._id;
+    if (!lodging) {
+      if (!lodging) {
+        throw new DomainException(
+          'Lodging not found',
+          ERROR_CODES.LODGING_NOT_FOUND,
+          HttpStatus.NOT_FOUND,
+        );
       }
     }
 
-    const filter = includeInactive ? { _id: id } : { _id: id, active: true };
-
-    const updated = await this.lodgingModel.findOneAndUpdate(
-      filter,
-      {
-        ...dto,
-        ...(contactId !== undefined && { contactId }),
-      },
-      { new: true },
-    );
-
-    if (!updated) {
-      throw new NotFoundException('Lodging not found');
-    }
-
-    return updated;
+    return lodging;
   }
 
-  async remove(id: string, includeInactive = false) {
+  async update(
+    id: string,
+    dto: UpdateLodgingDto,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<Lodging> {
     if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException('Lodging not found');
+      throw new DomainException(
+        'Invalid lodging id',
+        ERROR_CODES.INVALID_OBJECT_ID,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    const filter = includeInactive ? { _id: id } : { _id: id, active: true };
-
-    const updated = await this.lodgingModel.findOneAndUpdate(
-      filter,
-      { active: false },
-      { new: true },
-    );
-
-    if (!updated) {
-      throw new NotFoundException('Lodging not found');
+    if (dto.occupiedRanges) {
+      this.validateRanges(dto.occupiedRanges);
     }
 
-    return updated;
+    if (dto.contactId) {
+      if (!Types.ObjectId.isValid(dto.contactId)) {
+        throw new DomainException(
+          'Invalid contact id',
+          ERROR_CODES.INVALID_OBJECT_ID,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const contact = await this.contactModel.findOne({
+        _id: dto.contactId,
+        ownerId,
+        active: true,
+      });
+
+      if (!contact) {
+        throw new DomainException(
+          'Contact not allowed',
+          ERROR_CODES.CONTACT_NOT_ALLOWED,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+    }
+
+    const filters: QueryFilter<LodgingDocument> = { _id: id };
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = ownerId;
+    }
+
+    const lodging = await this.lodgingModel.findOneAndUpdate(filters, dto, {
+      new: true,
+    });
+
+    if (!lodging) {
+      throw new DomainException(
+        'Lodging not found',
+        ERROR_CODES.LODGING_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return lodging;
+  }
+
+  async remove(
+    id: string,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<{ deleted: boolean }> {
+    const filters: QueryFilter<LodgingDocument> = {
+      _id: id,
+    };
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = ownerId;
+    }
+
+    const lodging = await this.lodgingModel.findOneAndDelete(filters);
+
+    if (!lodging) {
+      if (!lodging) {
+        throw new DomainException(
+          'Lodging not found',
+          ERROR_CODES.LODGING_NOT_FOUND,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+    }
+
+    return { deleted: true };
   }
 
   private validateRanges(ranges?: AvailabilityRangeDto[]) {
