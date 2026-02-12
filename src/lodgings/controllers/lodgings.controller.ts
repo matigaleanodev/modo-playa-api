@@ -17,6 +17,7 @@ import {
   ApiResponse,
   ApiQuery,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 
 import { LodgingsService } from '../lodgings.service';
@@ -35,6 +36,7 @@ import {
 } from '../swagger/lodgings-admin.swagger';
 
 @ApiTags('Admin - Lodgings')
+@ApiBearerAuth('access-token')
 @Controller('admin/lodgings')
 @UseGuards(JwtAuthGuard)
 export class LodgingsAdminController {

@@ -5,26 +5,16 @@ export type UserDocument = User & Document;
 
 @Schema({ timestamps: true })
 export class User {
-  /* =========================
-   * Ownership
-   * ========================= */
-
   @Prop({
     type: Types.ObjectId,
     required: true,
-    index: true,
-    default: () => new Types.ObjectId(),
   })
   ownerId!: Types.ObjectId;
 
-  /* =========================
-   * Credenciales
-   * ========================= */
-
-  @Prop({ required: true, unique: true, lowercase: true, trim: true })
+  @Prop({ required: true, lowercase: true, trim: true })
   email!: string;
 
-  @Prop({ required: true, unique: true, lowercase: true, trim: true })
+  @Prop({ required: true, lowercase: true, trim: true })
   username!: string;
 
   @Prop()
@@ -42,19 +32,11 @@ export class User {
   @Prop({ default: 0 })
   resetPasswordAttempts!: number;
 
-  /* =========================
-   * Estado
-   * ========================= */
-
   @Prop({ default: true })
   isActive!: boolean;
 
   @Prop()
   lastLoginAt?: Date;
-
-  /* =========================
-   * UX (opcionales)
-   * ========================= */
 
   @Prop()
   firstName?: string;
@@ -73,3 +55,9 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+UserSchema.index({ ownerId: 1 });
+
+UserSchema.index({ ownerId: 1, email: 1 }, { unique: true });
+
+UserSchema.index({ ownerId: 1, username: 1 }, { unique: true });

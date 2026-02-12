@@ -1,44 +1,120 @@
-import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtAuthGuard } from '@auth/guard/auth.guard';
+import { RequestUser } from '@auth/interfaces/request-user.interface';
+import { Request } from 'express';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
+import {
+  CREATE_USER_EXAMPLE,
+  USER_RESPONSE_EXAMPLE,
+  USER_LIST_RESPONSE_EXAMPLE,
+  UPDATE_USER_EXAMPLE,
+} from './users.swagger';
 
-@Controller('users')
+@ApiTags('Admin - Users')
+@ApiBearerAuth('access-token')
+@Controller('admin/users')
+@UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @ApiOperation({
+    summary: 'Crear usuario para el owner actual',
+    description:
+      'Crea un usuario asociado al owner autenticado. Límite de 3 usuarios por owner salvo SUPERADMIN.',
+  })
+  @ApiBody({
+    schema: {
+      example: CREATE_USER_EXAMPLE,
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Usuario creado correctamente',
+    schema: { example: USER_RESPONSE_EXAMPLE },
+  })
   @Post()
-  async createUser(@Body() createUserDto: CreateUserDto) {
-    // TODO: OWNER VIENE DEL JWT
-    const ownerId = 'OWNER_ID_PLACEHOLDER';
-
-    return this.usersService.createUser(ownerId, createUserDto);
+  async createUser(
+    @Body() dto: CreateUserDto,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.usersService.createUser(req.user.ownerId, req.user.role, dto);
   }
 
+  @ApiOperation({
+    summary: 'Listar usuarios del owner actual',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de usuarios',
+    schema: { example: USER_LIST_RESPONSE_EXAMPLE },
+  })
   @Get()
-  async findAll() {
-    // TODO: OWNER VIENE DEL JWT
-    const ownerId = 'OWNER_ID_PLACEHOLDER';
-
-    return this.usersService.findAllByOwner(ownerId);
+  async findAll(@Req() req: Request & { user: RequestUser }) {
+    return this.usersService.findAllByOwner(req.user.ownerId);
   }
 
+  @ApiOperation({
+    summary: 'Obtener usuario por ID',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del usuario',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuario encontrado',
+    schema: { example: USER_RESPONSE_EXAMPLE },
+  })
   @Get(':id')
-  async findById(@Param('id') id: string) {
-    // TODO: OWNER VIENE DEL JWT
-    const ownerId = 'OWNER_ID_PLACEHOLDER';
-
-    return this.usersService.findById(ownerId, id);
+  async findById(
+    @Param('id') id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.usersService.findById(req.user.ownerId, id);
   }
 
+  @ApiOperation({
+    summary: 'Actualizar usuario',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID del usuario',
+  })
+  @ApiBody({
+    schema: {
+      example: UPDATE_USER_EXAMPLE,
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuario actualizado',
+    schema: { example: USER_RESPONSE_EXAMPLE },
+  })
   @Patch(':id')
   async updateUser(
     @Param('id') id: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body() dto: UpdateUserDto,
+    @Req() req: Request & { user: RequestUser },
   ) {
-    // TODO: OWNER VIENE DEL JWT
-    const ownerId = 'OWNER_ID_PLACEHOLDER';
-
-    return this.usersService.updateUser(ownerId, id, updateUserDto);
+    return this.usersService.updateUser(req.user.ownerId, id, dto);
   }
 }
