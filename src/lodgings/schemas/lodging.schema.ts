@@ -1,15 +1,11 @@
-// lodgings/schemas/lodging.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { AvailabilityRange } from './availability-range.schema';
+import { LodgingAmenity } from '@lodgings/enums/amenities.enum';
+import { LodgingType } from '@lodgings/enums/lodging-type.enum';
+import { PriceUnit } from '@lodgings/enums/price-unit.enum';
 
 export type LodgingDocument = HydratedDocument<Lodging>;
-
-export enum LodgingType {
-  CABIN = 'cabin',
-  APARTMENT = 'apartment',
-  HOUSE = 'house',
-}
 
 @Schema({ timestamps: true })
 export class Lodging {
@@ -22,19 +18,78 @@ export class Lodging {
   @Prop({ required: true, trim: true })
   location!: string;
 
+  @Prop({ required: true, trim: true })
+  city!: string;
+
   @Prop({
-    required: true,
+    type: String,
     enum: LodgingType,
+    required: true,
   })
   type!: LodgingType;
 
-  @Prop({ type: [String], default: [] })
-  tags!: string[];
+  @Prop({
+    type: Number,
+    required: true,
+    min: 0,
+  })
+  price!: number;
+
+  @Prop({
+    type: String,
+    enum: PriceUnit,
+    required: true,
+  })
+  priceUnit!: PriceUnit;
+
+  @Prop({
+    type: Number,
+    required: true,
+    min: 1,
+  })
+  maxGuests!: number;
+
+  @Prop({
+    type: Number,
+    required: true,
+    min: 0,
+  })
+  bedrooms!: number;
+
+  @Prop({
+    type: Number,
+    required: true,
+    min: 0,
+  })
+  bathrooms!: number;
+
+  @Prop({
+    type: Number,
+    required: true,
+    min: 1,
+  })
+  minNights!: number;
+
+  @Prop({
+    type: Number,
+    min: 0,
+  })
+  distanceToBeach?: number;
+
+  @Prop({
+    type: [String],
+    enum: LodgingAmenity,
+    default: [],
+  })
+  amenities!: LodgingAmenity[];
 
   @Prop({ required: true })
   mainImage!: string;
 
-  @Prop({ type: [String], default: [] })
+  @Prop({
+    type: [String],
+    default: [],
+  })
   images!: string[];
 
   @Prop({
@@ -43,10 +98,22 @@ export class Lodging {
   })
   occupiedRanges!: AvailabilityRange[];
 
-  @Prop({ type: Types.ObjectId, ref: 'Contact' })
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Contact',
+  })
   contactId?: Types.ObjectId;
 
-  @Prop({ default: true })
+  @Prop({
+    type: Types.ObjectId,
+    required: true,
+    index: true,
+  })
+  ownerId!: Types.ObjectId;
+
+  @Prop({
+    default: true,
+  })
   active!: boolean;
 }
 
