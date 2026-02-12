@@ -1,11 +1,12 @@
-import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, QueryFilter, Types } from 'mongoose';
 import { Contact, ContactDocument } from './schemas/contact.schema';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { DomainException } from '@common/exceptions/domain.exception';
 import { ERROR_CODES } from '@common/constants/error-code';
+import { UserRole } from '@common/interfaces/role.interface';
 
 @Injectable()
 export class ContactsService {
@@ -14,78 +15,163 @@ export class ContactsService {
     private readonly contactModel: Model<ContactDocument>,
   ) {}
 
-  async create(dto: CreateContactDto) {
+  async create(dto: CreateContactDto, ownerId: string): Promise<Contact> {
     if (dto.isDefault) {
       await this.contactModel.updateMany(
-        { isDefault: true },
+        { ownerId, isDefault: true },
         { isDefault: false },
       );
     }
 
-    const contact = new this.contactModel(dto);
+    const contact = new this.contactModel({
+      ...dto,
+      ownerId,
+    });
+
     return contact.save();
   }
 
-  async findAll(includeInactive = false) {
-    const filter = includeInactive ? {} : { active: true };
+  async findAll(
+    includeInactive: boolean = false,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<Contact[]> {
+    const filters: QueryFilter<ContactDocument> = {};
 
-    return this.contactModel.find(filter).sort({ createdAt: -1 });
-  }
-
-  async findOne(id: string) {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException('Contact not found');
+    if (!includeInactive) {
+      filters.active = true;
     }
 
-    const contact = await this.contactModel.findOne({
-      _id: id,
-      active: true,
-    });
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = new Types.ObjectId(ownerId);
+    }
+
+    return this.contactModel.find(filters).sort({ createdAt: -1 });
+  }
+
+  async findOne(
+    id: string,
+    includeInactive: boolean,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<Contact> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new DomainException(
+        'Contact not found',
+        ERROR_CODES.CONTACT_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const filters: QueryFilter<ContactDocument> = {
+      _id: new Types.ObjectId(id),
+    };
+
+    if (!includeInactive) {
+      filters.active = true;
+    }
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = new Types.ObjectId(ownerId);
+    }
+
+    const contact = await this.contactModel.findOne(filters);
 
     if (!contact) {
-      throw new NotFoundException('Contact not found');
+      throw new DomainException(
+        'Contact not found',
+        ERROR_CODES.CONTACT_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return contact;
   }
 
-  async update(id: string, dto: UpdateContactDto) {
+  async update(
+    id: string,
+    dto: UpdateContactDto,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<Contact> {
     if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException('Contact not found');
+      throw new DomainException(
+        'Contact not found',
+        ERROR_CODES.CONTACT_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
-    if (dto.isDefault) {
+    const filters: QueryFilter<ContactDocument> = {
+      _id: new Types.ObjectId(id),
+    };
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = new Types.ObjectId(ownerId);
+    }
+
+    const existing = await this.contactModel.findOne(filters);
+
+    if (!existing) {
+      throw new DomainException(
+        'Contact not found',
+        ERROR_CODES.CONTACT_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (dto.isDefault === true && existing.active === false) {
+      throw new DomainException(
+        'Inactive contact cannot be default',
+        ERROR_CODES.CONTACT_NOT_ALLOWED,
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    if (dto.isDefault === true) {
       await this.contactModel.updateMany(
-        { isDefault: true },
+        {
+          ownerId: existing.ownerId,
+          isDefault: true,
+        },
         { isDefault: false },
       );
     }
 
-    const updated = await this.contactModel.findOneAndUpdate(
-      { _id: id, active: true },
-      dto,
-      { new: true },
-    );
+    Object.assign(existing, dto);
 
-    if (!updated) {
-      throw new NotFoundException('Contact not found');
-    }
-
-    return updated;
+    return existing.save();
   }
 
-  async remove(id: string) {
+  async remove(
+    id: string,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<{ deleted: boolean }> {
     if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException('Contact not found');
+      throw new DomainException(
+        'Contact not found',
+        ERROR_CODES.CONTACT_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
-    const contact = await this.contactModel.findOne({
-      _id: id,
-      active: true,
-    });
+    const filters: QueryFilter<ContactDocument> = {
+      _id: new Types.ObjectId(id),
+    };
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = new Types.ObjectId(ownerId);
+    }
+
+    const contact = await this.contactModel.findOne(filters);
 
     if (!contact) {
-      throw new NotFoundException('Contact not found');
+      throw new DomainException(
+        'Contact not found',
+        ERROR_CODES.CONTACT_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (contact.isDefault) {
@@ -97,6 +183,8 @@ export class ContactsService {
     }
 
     contact.active = false;
-    return contact.save();
+    await contact.save();
+
+    return { deleted: true };
   }
 }

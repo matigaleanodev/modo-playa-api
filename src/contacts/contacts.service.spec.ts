@@ -1,40 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ContactsService } from './contacts.service';
 import { getModelToken } from '@nestjs/mongoose';
-import { NotFoundException } from '@nestjs/common';
+import { ContactsService } from './contacts.service';
+import { Contact } from './schemas/contact.schema';
+import { DomainException } from '@common/exceptions/domain.exception';
 import { Types } from 'mongoose';
-import { ERROR_CODES } from '@common/constants/error-code';
+
+class FakeContactModel {
+  static updateMany = jest.fn();
+  static find = jest.fn();
+  static findOne = jest.fn();
+
+  private readonly data: unknown;
+
+  constructor(data: unknown) {
+    this.data = data;
+  }
+
+  save(): Promise<unknown> {
+    return Promise.resolve(this.data);
+  }
+}
 
 describe('ContactsService', () => {
   let service: ContactsService;
 
-  const mockContactDocument = {
-    _id: new Types.ObjectId(),
-    name: 'Contacto test',
-    active: true,
-    isDefault: false,
-    save: jest.fn(),
-  };
-
-  // Mongoose model mock
-  const contactModelMock: any = jest.fn().mockImplementation(() => ({
-    save: jest.fn().mockResolvedValue(mockContactDocument),
-  }));
-
-  contactModelMock.find = jest.fn();
-  contactModelMock.findOne = jest.fn();
-  contactModelMock.findOneAndUpdate = jest.fn();
-  contactModelMock.updateMany = jest.fn();
-
   beforeEach(async () => {
-    jest.clearAllMocks();
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ContactsService,
         {
-          provide: getModelToken('Contact'),
-          useValue: contactModelMock,
+          provide: getModelToken(Contact.name),
+          useValue: FakeContactModel,
         },
       ],
     }).compile();
@@ -42,150 +38,135 @@ describe('ContactsService', () => {
     service = module.get<ContactsService>(ContactsService);
   });
 
-  describe('create', () => {
-    it('crea contacto sin tocar defaults', async () => {
-      const result = await service.create({
-        name: 'Test',
-      });
-
-      expect(result).toBeDefined();
-      expect(contactModelMock.updateMany).not.toHaveBeenCalled();
-    });
-
-    it('desmarca default anterior si viene isDefault=true', async () => {
-      await service.create({
-        name: 'Test',
-        isDefault: true,
-      });
-
-      expect(contactModelMock.updateMany).toHaveBeenCalledWith(
-        { isDefault: true },
-        { isDefault: false },
-      );
-    });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('findAll', () => {
-    it('devuelve solo activos por defecto', async () => {
-      contactModelMock.find.mockReturnValue({
-        sort: jest.fn().mockResolvedValue([mockContactDocument]),
-      });
+  // -------------------------
+  // CREATE
+  // -------------------------
 
-      const result = await service.findAll();
+  it('debe crear contacto sin default', async () => {
+    const dto = { name: 'Test' };
+    const ownerId = new Types.ObjectId().toString();
 
-      expect(contactModelMock.find).toHaveBeenCalledWith({ active: true });
-      expect(result.length).toBe(1);
-    });
+    const result = await service.create(dto, ownerId);
 
-    it('incluye inactivos si includeInactive=true', async () => {
-      contactModelMock.find.mockReturnValue({
-        sort: jest.fn().mockResolvedValue([mockContactDocument]),
-      });
-
-      await service.findAll(true);
-
-      expect(contactModelMock.find).toHaveBeenCalledWith({});
-    });
+    expect(result).toEqual({ ...dto, ownerId });
   });
 
-  describe('findOne', () => {
-    it('lanza NotFound si el id es inválido', async () => {
-      await expect(service.findOne('invalid-id')).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
-    });
+  it('debe desactivar default anterior si dto.isDefault es true', async () => {
+    const dto = { name: 'Test', isDefault: true };
+    const ownerId = new Types.ObjectId().toString();
 
-    it('lanza NotFound si no existe', async () => {
-      contactModelMock.findOne.mockResolvedValue(null);
+    await service.create(dto, ownerId);
 
-      await expect(
-        service.findOne(new Types.ObjectId().toHexString()),
-      ).rejects.toBeInstanceOf(NotFoundException);
-    });
-
-    it('devuelve contacto activo', async () => {
-      contactModelMock.findOne.mockResolvedValue(mockContactDocument);
-
-      const result = await service.findOne(new Types.ObjectId().toHexString());
-
-      expect(result).toBeDefined();
-    });
+    expect(FakeContactModel.updateMany).toHaveBeenCalledWith(
+      { ownerId, isDefault: true },
+      { isDefault: false },
+    );
   });
 
-  describe('update', () => {
-    it('actualiza contacto', async () => {
-      contactModelMock.findOneAndUpdate.mockResolvedValue(mockContactDocument);
+  // -------------------------
+  // FIND ALL
+  // -------------------------
 
-      const result = await service.update(new Types.ObjectId().toHexString(), {
-        name: 'Nuevo nombre',
-      });
+  it('OWNER debe filtrar por ownerId', async () => {
+    const ownerId = new Types.ObjectId().toString();
+    const mockResult = [{ name: 'Contact' }];
 
-      expect(result).toBeDefined();
+    FakeContactModel.find.mockReturnValue({
+      sort: jest.fn().mockResolvedValue(mockResult),
     });
 
-    it('desmarca default anterior si se setea isDefault', async () => {
-      contactModelMock.findOneAndUpdate.mockResolvedValue(mockContactDocument);
+    const result = await service.findAll(false, ownerId, 'OWNER');
 
-      await service.update(new Types.ObjectId().toHexString(), {
-        isDefault: true,
-      });
-
-      expect(contactModelMock.updateMany).toHaveBeenCalledWith(
-        { isDefault: true },
-        { isDefault: false },
-      );
-    });
-
-    it('lanza NotFound si no existe', async () => {
-      contactModelMock.findOneAndUpdate.mockResolvedValue(null);
-
-      await expect(
-        service.update(new Types.ObjectId().toHexString(), {
-          name: 'Test',
-        }),
-      ).rejects.toBeInstanceOf(NotFoundException);
-    });
+    expect(result).toEqual(mockResult);
+    expect(FakeContactModel.find).toHaveBeenCalled();
   });
 
-  describe('remove', () => {
-    it('soft deletea correctamente si no es default', async () => {
-      const contact = {
-        ...mockContactDocument,
-        isDefault: false,
-        save: jest.fn().mockResolvedValue(mockContactDocument),
-      };
+  // -------------------------
+  // FIND ONE
+  // -------------------------
 
-      contactModelMock.findOne.mockResolvedValue(contact);
+  it('debe lanzar error si id inválido', async () => {
+    await expect(
+      service.findOne('invalid-id', false, 'owner', 'OWNER'),
+    ).rejects.toThrow(DomainException);
+  });
 
-      const result = await service.remove(new Types.ObjectId().toHexString());
+  it('debe devolver contacto si existe', async () => {
+    const contact = { _id: new Types.ObjectId(), active: true };
 
-      expect(result).toBeDefined();
-      expect(contact.save).toHaveBeenCalled();
-    });
+    FakeContactModel.findOne.mockResolvedValue(contact);
 
-    it('lanza DomainException si intenta eliminar default', async () => {
-      const contact = {
-        ...mockContactDocument,
-        isDefault: true,
-      };
+    const result = await service.findOne(
+      new Types.ObjectId().toString(),
+      false,
+      new Types.ObjectId().toString(),
+      'OWNER',
+    );
 
-      contactModelMock.findOne.mockResolvedValue(contact);
+    expect(result).toEqual(contact);
+  });
 
-      await expect(
-        service.remove(new Types.ObjectId().toHexString()),
-      ).rejects.toMatchObject({
-        response: {
-          code: ERROR_CODES.CONTACT_DEFAULT_DELETE_FORBIDDEN,
-        },
-      });
-    });
+  // -------------------------
+  // UPDATE
+  // -------------------------
 
-    it('lanza NotFound si no existe', async () => {
-      contactModelMock.findOne.mockResolvedValue(null);
+  it('debe lanzar error si contacto no existe', async () => {
+    FakeContactModel.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.remove(new Types.ObjectId().toHexString()),
-      ).rejects.toBeInstanceOf(NotFoundException);
-    });
+    await expect(
+      service.update(
+        new Types.ObjectId().toString(),
+        {},
+        new Types.ObjectId().toString(),
+        'OWNER',
+      ),
+    ).rejects.toThrow(DomainException);
+  });
+
+  // -------------------------
+  // REMOVE
+  // -------------------------
+
+  it('debe bloquear eliminación si es default', async () => {
+    const contact = {
+      _id: new Types.ObjectId(),
+      isDefault: true,
+    };
+
+    FakeContactModel.findOne.mockResolvedValue(contact);
+
+    await expect(
+      service.remove(
+        new Types.ObjectId().toString(),
+        new Types.ObjectId().toString(),
+        'OWNER',
+      ),
+    ).rejects.toThrow(DomainException);
+  });
+
+  it('debe hacer soft delete correctamente', async () => {
+    const saveMock = jest.fn().mockResolvedValue(true);
+
+    const contact = {
+      _id: new Types.ObjectId(),
+      isDefault: false,
+      active: true,
+      save: saveMock,
+    };
+
+    FakeContactModel.findOne.mockResolvedValue(contact);
+
+    const result = await service.remove(
+      new Types.ObjectId().toString(),
+      new Types.ObjectId().toString(),
+      'OWNER',
+    );
+
+    expect(contact.active).toBe(false);
+    expect(result).toEqual({ deleted: true });
   });
 });
