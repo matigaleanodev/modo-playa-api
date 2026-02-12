@@ -1,98 +1,113 @@
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="docs/assets/modo_playa_tentativo.png" alt="Foodly Notes" width="200" />
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+# Modo Playa -- API
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+🌐 English version: [README.en.md](./README.en.md)
 
-## Description
+**Modo Playa API** es el backend de una plataforma de catálogo de
+alojamientos pensada para alquileres turísticos (ej. cabañas, casas,
+departamentos).
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Está diseñada como una API **multi-tenant**, donde cada propietario
+(OWNER) gestiona exclusivamente sus propios recursos (usuarios,
+contactos y alojamientos), garantizando aislamiento de datos a nivel de
+aplicación.
 
-## Project setup
+---
 
-```bash
-$ npm install
-```
+## 🧩 Arquitectura General
 
-## Compile and run the project
+- **Framework**: NestJS
+- **Base de datos**: MongoDB + Mongoose
+- **Autenticación**: JWT (ownerId incluido en el payload)
+- **Email transaccional**: Resend
+- **Validación**: class-validator + ValidationPipe global
+- **Testing**: Jest (services y controllers con cobertura unitaria)
 
-```bash
-# development
-$ npm run start
+---
 
-# watch mode
-$ npm run start:dev
+## 🏢 Multi-Tenant
 
-# production mode
-$ npm run start:prod
-```
+La API implementa un modelo multi-tenant basado en:
 
-## Run tests
+- `ownerId` almacenado en cada entidad relevante
+- `ownerId` embebido en el JWT
+- Filtros automáticos por `ownerId` en endpoints administrativos
+- Separación estricta entre endpoints públicos y privados
 
-```bash
-# unit tests
-$ npm run test
+Cada OWNER: - Solo puede ver y modificar sus propios contactos - Solo
+puede ver y modificar sus propios alojamientos - Solo puede gestionar
+sus propios usuarios
 
-# e2e tests
-$ npm run test:e2e
+---
 
-# test coverage
-$ npm run test:cov
-```
+## 📦 Módulos principales
 
-## Deployment
+### 🔐 Auth
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- Activación de cuenta
+- Login
+- Refresh token
+- Cambio de contraseña
+- Recuperación de contraseña por código
+- Reset de contraseña
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 👥 Users
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+- Creación de usuarios por propietario
+- Listado por owner
+- Actualización y desactivación
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 📇 Contacts
 
-## Resources
+- CRUD de contactos
+- Contacto por defecto por propietario
+- Soft delete
+- Validación multi-tenant
 
-Check out a few resources that may come in handy when working with NestJS:
+### 🏠 Lodgings
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- CRUD administrativo
+- Endpoint público con búsqueda y filtros por tags
+- Paginación
+- Rango de disponibilidad validado
+- Relación con Contact
 
-## Support
+### ✉️ Mail
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- Envío de código de recuperación
+- Notificación de cambio de contraseña
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 🌍 Endpoints
 
-## License
+Todos los endpoints están bajo:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+/api
+
+Ejemplos:
+
+- `POST /api/auth/login`
+- `GET /api/lodgings`
+- `GET /api/admin/lodgings`
+- `POST /api/admin/contacts`
+
+---
+
+## 🧪 Testing
+
+- Cobertura unitaria en servicios y controllers
+- Mocks tipados
+- Sin uso de `any` innecesario
+- Aislamiento por módulo
+
+---
+
+## 🧑‍💻 Desarrollo
+
+Ver guía completa en:
+
+👉 [DEVELOPMENT.md](./DEVELOPMENT.md)
