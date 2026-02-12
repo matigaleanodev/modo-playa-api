@@ -19,7 +19,7 @@ import { SetPasswordDto } from './interfaces/set-password.interface';
 import { AuthUserResponse } from './interfaces/auth-user.interface';
 import { ChangePasswordDto } from './dto/chage-password.dto';
 import { VerifyResetCodeDto } from './dto/verifiy-reset-code.dto';
-import { MailService } from 'src/mail/mail.service';
+import { MailService } from '@mail/mail.service';
 
 @Injectable()
 export class AuthService {

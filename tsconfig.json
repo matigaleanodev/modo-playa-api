@@ -29,7 +29,10 @@
       "@users/*": ["src/users/*"],
 
       "@common": ["src/common"],
-      "@common/*": ["src/common/*"]
+      "@common/*": ["src/common/*"],
+
+      "@mail": ["src/mail"],
+      "@mail/*": ["src/mail/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

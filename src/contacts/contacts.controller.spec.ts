@@ -1,13 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ContactsController } from './contacts.controller';
 import { ContactsService } from './contacts.service';
-import { Types } from 'mongoose';
+import { CreateContactDto } from './dto/create-contact.dto';
+import { UpdateContactDto } from './dto/update-contact.dto';
+import { Contact } from './schemas/contact.schema';
+import { RequestUser } from '@auth/interfaces/request-user.interface';
+import { Request } from 'express';
 
 describe('ContactsController', () => {
   let controller: ContactsController;
   let service: ContactsService;
 
-  const serviceMock = {
+  const mockService = {
     create: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
@@ -15,22 +19,24 @@ describe('ContactsController', () => {
     remove: jest.fn(),
   };
 
-  const mockContact = {
-    _id: new Types.ObjectId(),
-    name: 'Contacto test',
-    active: true,
-    isDefault: false,
+  const mockUser: RequestUser = {
+    userId: 'user1',
+    ownerId: 'owner1',
+    role: 'OWNER',
+    purpose: 'ACCESS',
   };
 
-  beforeEach(async () => {
-    jest.clearAllMocks();
+  const mockRequest: Request & { user: RequestUser } = {
+    user: mockUser,
+  } as Request & { user: RequestUser };
 
+  beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ContactsController],
       providers: [
         {
           provide: ContactsService,
-          useValue: serviceMock,
+          useValue: mockService,
         },
       ],
     }).compile();
@@ -39,79 +45,106 @@ describe('ContactsController', () => {
     service = module.get<ContactsService>(ContactsService);
   });
 
-  describe('create', () => {
-    it('llama al service.create con el dto', async () => {
-      serviceMock.create.mockResolvedValue(mockContact);
-
-      const dto = {
-        name: 'Nuevo contacto',
-        email: 'test@mail.com',
-      };
-
-      const result = await controller.create(dto);
-
-      expect(service.create).toHaveBeenCalledWith(dto);
-      expect(result).toEqual(mockContact);
-    });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('findAll', () => {
-    it('llama al service.findAll sin includeInactive', async () => {
-      serviceMock.findAll.mockResolvedValue([mockContact]);
+  // -------------------------
+  // CREATE
+  // -------------------------
 
-      const result = await controller.findAll(undefined);
+  it('debe llamar a create con ownerId', async () => {
+    const dto: CreateContactDto = { name: 'Test' };
+    const expected: Contact = { name: 'Test' } as Contact;
 
-      expect(service.findAll).toHaveBeenCalledWith(undefined);
-      expect(result).toEqual([mockContact]);
-    });
+    mockService.create.mockResolvedValue(expected);
 
-    it('llama al service.findAll con includeInactive=true', async () => {
-      serviceMock.findAll.mockResolvedValue([mockContact]);
+    const result = await controller.create(dto, mockRequest);
 
-      const result = await controller.findAll(true);
-
-      expect(service.findAll).toHaveBeenCalledWith(true);
-      expect(result).toEqual([mockContact]);
-    });
+    expect(service.create).toHaveBeenCalledWith(dto, mockUser.ownerId);
+    expect(result).toEqual(expected);
   });
 
-  describe('findOne', () => {
-    it('llama al service.findOne con id', async () => {
-      serviceMock.findOne.mockResolvedValue(mockContact);
+  // -------------------------
+  // FIND ALL
+  // -------------------------
 
-      const id = new Types.ObjectId().toHexString();
+  it('debe llamar a findAll con ownerId y role', async () => {
+    const expected: Contact[] = [];
 
-      const result = await controller.findOne(id);
+    mockService.findAll.mockResolvedValue(expected);
 
-      expect(service.findOne).toHaveBeenCalledWith(id);
-      expect(result).toEqual(mockContact);
-    });
+    const result = await controller.findAll(false, mockRequest);
+
+    expect(service.findAll).toHaveBeenCalledWith(
+      false,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+
+    expect(result).toEqual(expected);
   });
 
-  describe('update', () => {
-    it('llama al service.update con id y dto', async () => {
-      serviceMock.update.mockResolvedValue(mockContact);
+  // -------------------------
+  // FIND ONE
+  // -------------------------
 
-      const id = new Types.ObjectId().toHexString();
-      const dto = { name: 'Nombre actualizado' };
+  it('debe llamar a findOne con parámetros correctos', async () => {
+    const expected: Contact = { name: 'Test' } as Contact;
 
-      const result = await controller.update(id, dto);
+    mockService.findOne.mockResolvedValue(expected);
 
-      expect(service.update).toHaveBeenCalledWith(id, dto);
-      expect(result).toEqual(mockContact);
-    });
+    const result = await controller.findOne('contactId', false, mockRequest);
+
+    expect(service.findOne).toHaveBeenCalledWith(
+      'contactId',
+      false,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+
+    expect(result).toEqual(expected);
   });
 
-  describe('remove', () => {
-    it('llama al service.remove con id', async () => {
-      serviceMock.remove.mockResolvedValue(mockContact);
+  // -------------------------
+  // UPDATE
+  // -------------------------
 
-      const id = new Types.ObjectId().toHexString();
+  it('debe llamar a update con ownerId y role', async () => {
+    const dto: UpdateContactDto = { name: 'Updated' };
+    const expected: Contact = { name: 'Updated' } as Contact;
 
-      const result = await controller.remove(id);
+    mockService.update.mockResolvedValue(expected);
 
-      expect(service.remove).toHaveBeenCalledWith(id);
-      expect(result).toEqual(mockContact);
-    });
+    const result = await controller.update('contactId', dto, mockRequest);
+
+    expect(service.update).toHaveBeenCalledWith(
+      'contactId',
+      dto,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+
+    expect(result).toEqual(expected);
+  });
+
+  // -------------------------
+  // REMOVE
+  // -------------------------
+
+  it('debe llamar a remove con ownerId y role', async () => {
+    const expected = { deleted: true };
+
+    mockService.remove.mockResolvedValue(expected);
+
+    const result = await controller.remove('contactId', mockRequest);
+
+    expect(service.remove).toHaveBeenCalledWith(
+      'contactId',
+      mockUser.ownerId,
+      mockUser.role,
+    );
+
+    expect(result).toEqual(expected);
   });
 });
