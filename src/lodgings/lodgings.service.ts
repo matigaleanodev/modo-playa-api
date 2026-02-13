@@ -43,8 +43,8 @@ export class LodgingsService {
       }
 
       const contact = await this.contactModel.findOne({
-        _id: dto.contactId,
-        ownerId,
+        _id: new Types.ObjectId(dto.contactId),
+        ownerId: new Types.ObjectId(ownerId),
         active: true,
       });
 
@@ -59,11 +59,10 @@ export class LodgingsService {
       contactId = contact._id;
     } else {
       const defaultContact = await this.contactModel.findOne({
-        ownerId,
+        ownerId: new Types.ObjectId(ownerId),
         isDefault: true,
         active: true,
       });
-
       if (defaultContact) {
         contactId = defaultContact._id;
       }
@@ -71,7 +70,7 @@ export class LodgingsService {
 
     const lodging = new this.lodgingModel({
       ...dto,
-      ownerId,
+      ownerId: new Types.ObjectId(ownerId),
       contactId,
     });
 
@@ -171,7 +170,7 @@ export class LodgingsService {
     }
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = ownerId;
+      filters.ownerId = new Types.ObjectId(ownerId);
     }
 
     const [data, total] = await Promise.all([
@@ -192,11 +191,11 @@ export class LodgingsService {
     role: UserRole,
   ): Promise<LodgingDocument> {
     const filters: QueryFilter<LodgingDocument> = {
-      _id: id,
+      _id: new Types.ObjectId(id),
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = ownerId;
+      filters.ownerId = new Types.ObjectId(ownerId);
     }
 
     const lodging = await this.lodgingModel.findOne(filters);
@@ -241,7 +240,7 @@ export class LodgingsService {
 
       const contact = await this.contactModel.findOne({
         _id: dto.contactId,
-        ownerId,
+        ownerId: new Types.ObjectId(ownerId),
         active: true,
       });
 
@@ -254,12 +253,13 @@ export class LodgingsService {
       }
     }
 
-    const filters: QueryFilter<LodgingDocument> = { _id: id };
+    const filters: QueryFilter<LodgingDocument> = {
+      _id: new Types.ObjectId(id),
+    };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = ownerId;
+      filters.ownerId = new Types.ObjectId(ownerId);
     }
-
     const lodging = await this.lodgingModel.findOneAndUpdate(filters, dto, {
       new: true,
     });
@@ -281,11 +281,11 @@ export class LodgingsService {
     role: UserRole,
   ): Promise<{ deleted: boolean }> {
     const filters: QueryFilter<LodgingDocument> = {
-      _id: id,
+      _id: new Types.ObjectId(id),
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = ownerId;
+      filters.ownerId = new Types.ObjectId(ownerId);
     }
 
     const lodging = await this.lodgingModel.findOne(filters);

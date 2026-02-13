@@ -18,7 +18,8 @@ import { MailModule } from '@mail/mail.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get('SECRET_KEY'),
+        secret: configService.get<string>('SECRET_KEY', 'SECRET_KEY'),
+        signOptions: { expiresIn: '15m' },
       }),
     }),
   ],

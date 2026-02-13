@@ -4,6 +4,7 @@ import { AvailabilityRange } from './availability-range.schema';
 import { LodgingAmenity } from '@lodgings/enums/amenities.enum';
 import { LodgingType } from '@lodgings/enums/lodging-type.enum';
 import { PriceUnit } from '@lodgings/enums/price-unit.enum';
+import { Contact } from '@contacts/schemas/contact.schema';
 
 export type LodgingDocument = HydratedDocument<Lodging>;
 
@@ -98,11 +99,8 @@ export class Lodging {
   })
   occupiedRanges!: AvailabilityRange[];
 
-  @Prop({
-    type: Types.ObjectId,
-    ref: 'Contact',
-  })
-  contactId?: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: Contact.name })
+  contactId!: Types.ObjectId;
 
   @Prop({
     type: Types.ObjectId,

@@ -1,15 +1,13 @@
-import { IsString, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, Length } from 'class-validator';
+import { IdentifierDto } from './identifier.dto';
 
-export class ActivateDto {
+export class ActivateDto extends IdentifierDto {
   @ApiProperty({
-    example: 'admin@modoplaya.com',
-    description: 'Email o username del usuario',
-    minLength: 3,
+    example: '123456',
+    description: 'Código de activación enviado por email',
   })
   @IsString()
-  @MinLength(3)
-  identifier!: string;
+  @Length(6, 6)
+  code!: string;
 }
-
-export class ForgotPasswordDto extends ActivateDto {}

@@ -8,6 +8,7 @@ export class User {
   @Prop({
     type: Types.ObjectId,
     required: true,
+    default: () => new Types.ObjectId(),
   })
   ownerId!: Types.ObjectId;
 

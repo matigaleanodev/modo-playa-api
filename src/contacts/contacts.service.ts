@@ -21,14 +21,14 @@ export class ContactsService {
   ): Promise<ContactDocument> {
     if (dto.isDefault) {
       await this.contactModel.updateMany(
-        { ownerId, isDefault: true },
+        { ownerId: new Types.ObjectId(ownerId), isDefault: true },
         { isDefault: false },
       );
     }
 
     const contact = new this.contactModel({
       ...dto,
-      ownerId,
+      ownerId: new Types.ObjectId(ownerId),
     });
 
     return contact.save();
@@ -49,7 +49,7 @@ export class ContactsService {
       filters.ownerId = new Types.ObjectId(ownerId);
     }
 
-    return this.contactModel.find(filters).sort({ createdAt: -1 });
+    return this.contactModel.find(filters).sort({ createdAt: -1 }).exec();
   }
 
   async findOne(
@@ -141,8 +141,7 @@ export class ContactsService {
       );
     }
 
-    Object.assign(existing, dto);
-
+    existing.set(dto);
     return existing.save();
   }
 
