@@ -13,20 +13,37 @@ export class MailService {
     this.resend = new Resend(apiKey);
   }
 
+  async sendActivationCode(email: string, code: string): Promise<void> {
+    await this.resend.emails.send({
+      from: `Modo Playa <${this.emailFrom}>`,
+      to: email,
+      subject: 'Activación de tu cuenta en Modo Playa',
+      html: `
+      <div style="font-family: Arial, sans-serif;">
+        <h2>Activación de cuenta</h2>
+        <p>Tu código de activación es:</p>
+        <h1 style="letter-spacing: 4px;">${code}</h1>
+        <p>Este código vence en 15 minutos.</p>
+        <p>Si no solicitaste esta activación, podés ignorar este mensaje.</p>
+      </div>
+    `,
+    });
+  }
+
   async sendResetCode(email: string, code: string): Promise<void> {
     await this.resend.emails.send({
-      from: 'Modo Playa <${}>',
+      from: `Modo Playa <${this.emailFrom}>`,
       to: email,
       subject: 'Código de recuperación de contraseña',
       html: `
-        <div style="font-family: Arial, sans-serif;">
-          <h2>Recuperación de contraseña</h2>
-          <p>Tu código de verificación es:</p>
-          <h1>${code}</h1>
-          <p>Este código vence en 15 minutos.</p>
-          <p>Si no solicitaste este cambio, podés ignorar este mensaje.</p>
-        </div>
-      `,
+      <div style="font-family: Arial, sans-serif;">
+        <h2>Recuperación de contraseña</h2>
+        <p>Tu código de verificación es:</p>
+        <h1>${code}</h1>
+        <p>Este código vence en 15 minutos.</p>
+        <p>Si no solicitaste este cambio, podés ignorar este mensaje.</p>
+      </div>
+    `,
     });
   }
 

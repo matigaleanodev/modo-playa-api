@@ -15,7 +15,7 @@ import {
 } from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
-import { ActivateDto, ForgotPasswordDto } from './dto/activate.dto';
+import { ActivateDto } from './dto/activate.dto';
 import { RequestUser } from './interfaces/request-user.interface';
 import { SetPasswordDto } from './interfaces/set-password.interface';
 import { LoginDto } from './dto/login.dto';
@@ -31,11 +31,32 @@ import {
   RESET_PASSWORD_RESPONSE_EXAMPLE,
 } from './swagger/auth.swagger';
 import { AuthUserResponse } from './interfaces/auth-user.interface';
+import { IdentifierDto } from './dto/identifier.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
+
+  @ApiOperation({
+    summary: 'Solicitar activación de cuenta',
+    description:
+      'Genera y envía un código de activación al email del usuario si existe.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Código enviado si el usuario existe',
+  })
+  @Post('request-activation')
+  async requestActivation(
+    @Body() dto: { identifier: string },
+  ): Promise<{ message: string }> {
+    await this.authService.requestActivation(dto.identifier);
+
+    return {
+      message: 'Si el usuario existe, se envió un código de activación',
+    };
+  }
 
   @ApiOperation({
     summary: 'Activar usuario',
@@ -125,14 +146,14 @@ export class AuthController {
     description:
       'Envía un código de recuperación al email si el usuario existe.',
   })
-  @ApiBody({ type: ForgotPasswordDto })
+  @ApiBody({ type: IdentifierDto })
   @ApiResponse({
     status: 201,
     description: 'Mensaje genérico por seguridad',
     schema: { example: FORGOT_PASSWORD_RESPONSE_EXAMPLE },
   })
   @Post('forgot-password')
-  forgotPassword(@Body() dto: ForgotPasswordDto): Promise<{ message: string }> {
+  forgotPassword(@Body() dto: IdentifierDto): Promise<{ message: string }> {
     return this.authService.forgotPassword(dto);
   }
 

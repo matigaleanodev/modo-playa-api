@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 
 import { UsersService } from '@users/users.service';
-import { ActivateDto, ForgotPasswordDto } from './dto/activate.dto';
+import { ActivateDto } from './dto/activate.dto';
 import { LoginDto } from './dto/login.dto';
 
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -20,6 +20,7 @@ import { AuthUserResponse } from './interfaces/auth-user.interface';
 import { ChangePasswordDto } from './dto/chage-password.dto';
 import { VerifyResetCodeDto } from './dto/verifiy-reset-code.dto';
 import { MailService } from '@mail/mail.service';
+import { IdentifierDto } from './dto/identifier.dto';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +30,34 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
   ) {}
+  async requestActivation(identifier: string): Promise<void> {
+    const normalized = identifier.toLowerCase();
+
+    const user = normalized.includes('@')
+      ? await this.usersService.findByEmail(normalized)
+      : await this.usersService.findByUsername(normalized);
+
+    if (user && user.isActive && !user.isPasswordSet) {
+      const code = this.generateSixDigitCode();
+
+      const saltRounds = this.configService.get<number>('BCRYPT_ROUNDS', 12);
+      const codeHash = await bcrypt.hash(code, saltRounds);
+
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await this.usersService.setResetPasswordData(
+        user._id.toString(),
+        codeHash,
+        expiresAt,
+      );
+
+      try {
+        await this.mailService.sendActivationCode(user.email, code);
+      } catch (error) {
+        console.error('Mail error:', error);
+      }
+    }
+  }
 
   async activate(dto: ActivateDto): Promise<{ accessToken: string }> {
     const identifier = dto.identifier.toLowerCase();
@@ -37,8 +66,8 @@ export class AuthService {
       ? await this.usersService.findByEmail(identifier)
       : await this.usersService.findByUsername(identifier);
 
-    if (!user) {
-      throw new AuthException('User not found', ERROR_CODES.USER_NOT_FOUND);
+    if (!user || !user.resetPasswordCodeHash || !user.resetPasswordExpiresAt) {
+      throw new AuthException('Invalid code', ERROR_CODES.INVALID_CREDENTIALS);
     }
 
     if (!user.isActive) {
@@ -51,6 +80,30 @@ export class AuthService {
         ERROR_CODES.PASSWORD_ALREADY_SET,
       );
     }
+
+    if (user.resetPasswordExpiresAt.getTime() < Date.now()) {
+      throw new AuthException('Code expired', ERROR_CODES.INVALID_CREDENTIALS);
+    }
+
+    if (user.resetPasswordAttempts >= 5) {
+      throw new AuthException(
+        'Too many attempts',
+        ERROR_CODES.INVALID_CREDENTIALS,
+      );
+    }
+
+    const isCodeValid = await bcrypt.compare(
+      dto.code,
+      user.resetPasswordCodeHash,
+    );
+
+    if (!isCodeValid) {
+      await this.usersService.incrementResetAttempts(user._id.toString());
+
+      throw new AuthException('Invalid code', ERROR_CODES.INVALID_CREDENTIALS);
+    }
+
+    await this.usersService.clearResetData(user._id.toString());
 
     const role = this.resolveUserRole(user);
 
@@ -319,7 +372,7 @@ export class AuthService {
     return this.buildAuthResponse(dbUser, accessToken, refreshToken);
   }
 
-  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+  async forgotPassword(dto: IdentifierDto): Promise<{ message: string }> {
     const identifier = dto.identifier.toLowerCase();
 
     const user = identifier.includes('@')
