@@ -14,6 +14,8 @@ import {
 } from './dto/pagination-query.dto';
 import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
 import { UserRole } from '@common/interfaces/role.interface';
+import { toObjectIdOrThrow } from '@common/utils/object-id.util';
+import { escapeRegex } from '@common/utils/regex.util';
 
 @Injectable()
 export class LodgingsService {
@@ -30,6 +32,11 @@ export class LodgingsService {
     ownerId: string,
   ): Promise<LodgingDocument> {
     this.validateRanges(dto.occupiedRanges);
+    const ownerObjectId = toObjectIdOrThrow(ownerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
 
     let contactId: Types.ObjectId | undefined;
 
@@ -44,7 +51,7 @@ export class LodgingsService {
 
       const contact = await this.contactModel.findOne({
         _id: new Types.ObjectId(dto.contactId),
-        ownerId: new Types.ObjectId(ownerId),
+        ownerId: ownerObjectId,
         active: true,
       });
 
@@ -59,7 +66,7 @@ export class LodgingsService {
       contactId = contact._id;
     } else {
       const defaultContact = await this.contactModel.findOne({
-        ownerId: new Types.ObjectId(ownerId),
+        ownerId: ownerObjectId,
         isDefault: true,
         active: true,
       });
@@ -70,7 +77,7 @@ export class LodgingsService {
 
     const lodging = new this.lodgingModel({
       ...dto,
-      ownerId: new Types.ObjectId(ownerId),
+      ownerId: ownerObjectId,
       contactId,
     });
 
@@ -89,6 +96,7 @@ export class LodgingsService {
       minPrice,
       maxPrice,
       amenities,
+      tag,
     } = query;
 
     const filters: QueryFilter<LodgingDocument> = {
@@ -96,10 +104,11 @@ export class LodgingsService {
     };
 
     if (search) {
+      const escapedSearch = escapeRegex(search);
       filters.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { tags: { $regex: search, $options: 'i' } },
+        { title: { $regex: escapedSearch, $options: 'i' } },
+        { description: { $regex: escapedSearch, $options: 'i' } },
+        { tags: { $regex: escapedSearch, $options: 'i' } },
       ];
     }
 
@@ -122,6 +131,10 @@ export class LodgingsService {
       filters.amenities = { $all: amenities };
     }
 
+    if (tag && tag.length > 0) {
+      filters.tags = { $all: tag };
+    }
+
     const [data, total] = await Promise.all([
       this.lodgingModel
         .find(filters)
@@ -141,7 +154,11 @@ export class LodgingsService {
 
   async findPublicById(id: string): Promise<LodgingDocument> {
     const lodging = await this.lodgingModel.findOne({
-      _id: id,
+      _id: toObjectIdOrThrow(id, {
+        message: 'Invalid lodging id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
       active: true,
     });
 
@@ -162,6 +179,11 @@ export class LodgingsService {
     role: UserRole,
   ): Promise<PaginatedResponse<LodgingDocument>> {
     const { page = 1, limit = 10, includeInactive = true } = query;
+    const ownerObjectId = toObjectIdOrThrow(ownerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
 
     const filters: QueryFilter<LodgingDocument> = {};
 
@@ -170,7 +192,7 @@ export class LodgingsService {
     }
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = ownerObjectId;
     }
 
     const [data, total] = await Promise.all([
@@ -191,11 +213,19 @@ export class LodgingsService {
     role: UserRole,
   ): Promise<LodgingDocument> {
     const filters: QueryFilter<LodgingDocument> = {
-      _id: new Types.ObjectId(id),
+      _id: toObjectIdOrThrow(id, {
+        message: 'Invalid lodging id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const lodging = await this.lodgingModel.findOne(filters);
@@ -217,13 +247,16 @@ export class LodgingsService {
     ownerId: string,
     role: UserRole,
   ): Promise<LodgingDocument> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new DomainException(
-        'Invalid lodging id',
-        ERROR_CODES.INVALID_OBJECT_ID,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const ownerObjectId = toObjectIdOrThrow(ownerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
+    const lodgingObjectId = toObjectIdOrThrow(id, {
+      message: 'Invalid lodging id',
+      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
 
     if (dto.occupiedRanges) {
       this.validateRanges(dto.occupiedRanges);
@@ -240,7 +273,7 @@ export class LodgingsService {
 
       const contact = await this.contactModel.findOne({
         _id: dto.contactId,
-        ownerId: new Types.ObjectId(ownerId),
+        ownerId: ownerObjectId,
         active: true,
       });
 
@@ -254,14 +287,15 @@ export class LodgingsService {
     }
 
     const filters: QueryFilter<LodgingDocument> = {
-      _id: new Types.ObjectId(id),
+      _id: lodgingObjectId,
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = ownerObjectId;
     }
     const lodging = await this.lodgingModel.findOneAndUpdate(filters, dto, {
       new: true,
+      runValidators: true,
     });
 
     if (!lodging) {
@@ -281,11 +315,19 @@ export class LodgingsService {
     role: UserRole,
   ): Promise<{ deleted: boolean }> {
     const filters: QueryFilter<LodgingDocument> = {
-      _id: new Types.ObjectId(id),
+      _id: toObjectIdOrThrow(id, {
+        message: 'Invalid lodging id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const lodging = await this.lodgingModel.findOne(filters);

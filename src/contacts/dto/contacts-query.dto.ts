@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { transformBooleanQuery } from '@common/utils/query-transformers.util';
 
 export class ContactsQueryDto {
   @ApiPropertyOptional({ example: 1 })
@@ -20,7 +21,7 @@ export class ContactsQueryDto {
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(transformBooleanQuery)
   @IsBoolean()
   includeInactive?: boolean = false;
 }

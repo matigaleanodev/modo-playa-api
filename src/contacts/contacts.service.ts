@@ -9,6 +9,7 @@ import { ERROR_CODES } from '@common/constants/error-code';
 import { UserRole } from '@common/interfaces/role.interface';
 import { ContactsQueryDto } from './dto/contacts-query.dto';
 import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
+import { toObjectIdOrThrow } from '@common/utils/object-id.util';
 
 @Injectable()
 export class ContactsService {
@@ -21,19 +22,36 @@ export class ContactsService {
     dto: CreateContactDto,
     ownerId: string,
   ): Promise<ContactDocument> {
+    const ownerObjectId = new Types.ObjectId(ownerId);
+
     if (dto.isDefault) {
       await this.contactModel.updateMany(
-        { ownerId: new Types.ObjectId(ownerId), isDefault: true },
+        { ownerId: ownerObjectId, isDefault: true },
         { isDefault: false },
       );
     }
 
     const contact = new this.contactModel({
       ...dto,
-      ownerId: new Types.ObjectId(ownerId),
+      ownerId: ownerObjectId,
     });
-
-    return contact.save();
+    try {
+      return await contact.save();
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code?: number }).code === 11000
+      ) {
+        throw new DomainException(
+          'Another default contact already exists for this owner',
+          ERROR_CODES.CONTACT_NOT_ALLOWED,
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw error;
+    }
   }
 
   async findAll(
@@ -52,13 +70,15 @@ export class ContactsService {
       filters.ownerId = new Types.ObjectId(ownerId);
     }
 
-    const data: ContactDocument[] = await this.contactModel
-      .find(filters)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .exec();
-    const total = await this.contactModel.countDocuments(filters).exec();
+    const [data, total] = await Promise.all([
+      this.contactModel
+        .find(filters)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      this.contactModel.countDocuments(filters).exec(),
+    ]);
 
     return { data, total, page, limit };
   }
@@ -69,16 +89,12 @@ export class ContactsService {
     ownerId: string,
     role: UserRole,
   ): Promise<ContactDocument> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new DomainException(
-        'Contact not found',
-        ERROR_CODES.CONTACT_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
     const filters: QueryFilter<ContactDocument> = {
-      _id: new Types.ObjectId(id),
+      _id: toObjectIdOrThrow(id, {
+        message: 'Contact not found',
+        errorCode: ERROR_CODES.CONTACT_NOT_FOUND,
+        httpStatus: HttpStatus.NOT_FOUND,
+      }),
     };
 
     if (!includeInactive) {
@@ -108,16 +124,12 @@ export class ContactsService {
     ownerId: string,
     role: UserRole,
   ): Promise<ContactDocument> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new DomainException(
-        'Contact not found',
-        ERROR_CODES.CONTACT_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
     const filters: QueryFilter<ContactDocument> = {
-      _id: new Types.ObjectId(id),
+      _id: toObjectIdOrThrow(id, {
+        message: 'Contact not found',
+        errorCode: ERROR_CODES.CONTACT_NOT_FOUND,
+        httpStatus: HttpStatus.NOT_FOUND,
+      }),
     };
 
     if (role !== 'SUPERADMIN') {
@@ -153,7 +165,24 @@ export class ContactsService {
     }
 
     existing.set(dto);
-    return existing.save();
+
+    try {
+      return await existing.save();
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code?: number }).code === 11000
+      ) {
+        throw new DomainException(
+          'Another default contact already exists for this owner',
+          ERROR_CODES.CONTACT_NOT_ALLOWED,
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw error;
+    }
   }
 
   async remove(
@@ -161,16 +190,12 @@ export class ContactsService {
     ownerId: string,
     role: UserRole,
   ): Promise<{ deleted: boolean }> {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new DomainException(
-        'Contact not found',
-        ERROR_CODES.CONTACT_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
     const filters: QueryFilter<ContactDocument> = {
-      _id: new Types.ObjectId(id),
+      _id: toObjectIdOrThrow(id, {
+        message: 'Contact not found',
+        errorCode: ERROR_CODES.CONTACT_NOT_FOUND,
+        httpStatus: HttpStatus.NOT_FOUND,
+      }),
     };
 
     if (role !== 'SUPERADMIN') {

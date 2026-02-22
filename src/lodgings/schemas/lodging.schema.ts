@@ -116,3 +116,8 @@ export class Lodging {
 }
 
 export const LodgingSchema = SchemaFactory.createForClass(Lodging);
+
+LodgingSchema.index({ active: 1, createdAt: -1 });
+LodgingSchema.index({ active: 1, city: 1, createdAt: -1 });
+LodgingSchema.index({ active: 1, price: 1 });
+LodgingSchema.index({ active: 1, maxGuests: 1 });
