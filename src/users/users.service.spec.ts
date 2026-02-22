@@ -129,7 +129,10 @@ describe('UsersService', () => {
   it('debe buscar usuario por id y owner', async () => {
     userModelMock.findOne.mockResolvedValue({ _id: 'id' });
 
-    const result = await service.findById(ownerId, new Types.ObjectId().toString());
+    const result = await service.findById(
+      ownerId,
+      new Types.ObjectId().toString(),
+    );
 
     expect(result).toBeDefined();
   });
@@ -143,9 +146,13 @@ describe('UsersService', () => {
       firstName: 'Juan',
     });
 
-    const result = await service.updateUser(ownerId, new Types.ObjectId().toString(), {
-      firstName: 'Juan',
-    });
+    const result = await service.updateUser(
+      ownerId,
+      new Types.ObjectId().toString(),
+      {
+        firstName: 'Juan',
+      },
+    );
 
     expect(result.firstName).toBe('Juan');
   });

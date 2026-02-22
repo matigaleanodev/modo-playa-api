@@ -21,6 +21,15 @@ class FakeContactModel {
   }
 }
 
+type UpdateManyFilters = {
+  ownerId: Types.ObjectId;
+  isDefault: boolean;
+};
+
+type FindFilters = {
+  ownerId: Types.ObjectId;
+};
+
 describe('ContactsService', () => {
   let service: ContactsService;
 
@@ -67,15 +76,13 @@ describe('ContactsService', () => {
 
     await service.create(dto, ownerId);
 
-    expect(FakeContactModel.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isDefault: true,
-        ownerId: expect.any(Types.ObjectId),
-      }),
-      { isDefault: false },
-    );
-    const [filters] = FakeContactModel.updateMany.mock.calls[0];
+    expect(FakeContactModel.updateMany).toHaveBeenCalledTimes(1);
+    const updateManyCalls = FakeContactModel.updateMany.mock
+      .calls as unknown as Array<[UpdateManyFilters, { isDefault: boolean }]>;
+    const [filters] = updateManyCalls[0];
+    expect(filters.isDefault).toBe(true);
     expect(filters.ownerId.toString()).toBe(ownerId);
+    expect(updateManyCalls[0][1]).toEqual({ isDefault: false });
   });
 
   // -------------------------
@@ -96,7 +103,10 @@ describe('ContactsService', () => {
 
     expect(result).toEqual(mockResult);
     expect(FakeContactModel.find).toHaveBeenCalled();
-    const [filters] = FakeContactModel.find.mock.calls[0];
+    const findCalls = FakeContactModel.find.mock.calls as unknown as Array<
+      [FindFilters]
+    >;
+    const [filters] = findCalls[0];
     expect(filters.ownerId.toString()).toBe(ownerId);
   });
 
