@@ -52,7 +52,13 @@ describe('ContactsService', () => {
 
     const result = await service.create(dto, ownerId);
 
-    expect(result).toEqual({ ...dto, ownerId });
+    expect(result).toMatchObject(dto);
+    expect((result as { ownerId: Types.ObjectId }).ownerId).toBeInstanceOf(
+      Types.ObjectId,
+    );
+    expect((result as { ownerId: Types.ObjectId }).ownerId.toString()).toBe(
+      ownerId,
+    );
   });
 
   it('debe desactivar default anterior si dto.isDefault es true', async () => {
@@ -62,9 +68,14 @@ describe('ContactsService', () => {
     await service.create(dto, ownerId);
 
     expect(FakeContactModel.updateMany).toHaveBeenCalledWith(
-      { ownerId, isDefault: true },
+      expect.objectContaining({
+        isDefault: true,
+        ownerId: expect.any(Types.ObjectId),
+      }),
       { isDefault: false },
     );
+    const [filters] = FakeContactModel.updateMany.mock.calls[0];
+    expect(filters.ownerId.toString()).toBe(ownerId);
   });
 
   // -------------------------
@@ -76,13 +87,17 @@ describe('ContactsService', () => {
     const mockResult = [{ name: 'Contact' }];
 
     FakeContactModel.find.mockReturnValue({
-      sort: jest.fn().mockResolvedValue(mockResult),
+      sort: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockResult),
+      }),
     });
 
     const result = await service.findAll(false, ownerId, 'OWNER');
 
     expect(result).toEqual(mockResult);
     expect(FakeContactModel.find).toHaveBeenCalled();
+    const [filters] = FakeContactModel.find.mock.calls[0];
+    expect(filters.ownerId.toString()).toBe(ownerId);
   });
 
   // -------------------------

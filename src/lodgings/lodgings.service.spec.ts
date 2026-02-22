@@ -4,9 +4,12 @@ import { LodgingsService } from './lodgings.service';
 import { Lodging } from './schemas/lodging.schema';
 import { Contact } from '@contacts/schemas/contact.schema';
 import { DomainException } from '@common/exceptions/domain.exception';
+import { Types } from 'mongoose';
 
 describe('LodgingsService', () => {
   let service: LodgingsService;
+  let ownerId: string;
+  let lodgingId: string;
 
   const mockLodgingModel = {
     find: jest.fn(),
@@ -21,6 +24,9 @@ describe('LodgingsService', () => {
   };
 
   beforeEach(async () => {
+    ownerId = new Types.ObjectId().toString();
+    lodgingId = new Types.ObjectId().toString();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LodgingsService,
@@ -75,7 +81,7 @@ describe('LodgingsService', () => {
       const lodging = { _id: '1', ownerId: 'owner1' };
       mockLodgingModel.findOne.mockResolvedValue(lodging);
 
-      const result = await service.findAdminById('1', 'owner1', 'OWNER');
+      const result = await service.findAdminById(lodgingId, ownerId, 'OWNER');
 
       expect(result).toEqual(lodging);
     });
@@ -84,7 +90,7 @@ describe('LodgingsService', () => {
       mockLodgingModel.findOne.mockResolvedValue(null);
 
       await expect(
-        service.findAdminById('1', 'owner1', 'OWNER'),
+        service.findAdminById(lodgingId, ownerId, 'OWNER'),
       ).rejects.toThrow(DomainException);
     });
   });
@@ -101,7 +107,7 @@ describe('LodgingsService', () => {
       const result = await service.update(
         '507f1f77bcf86cd799439011',
         { title: 'Nuevo título' },
-        'owner1',
+        ownerId,
         'OWNER',
       );
 
@@ -110,7 +116,7 @@ describe('LodgingsService', () => {
 
     it('debe lanzar error si id inválido', async () => {
       await expect(
-        service.update('invalid-id', {}, 'owner1', 'OWNER'),
+        service.update('invalid-id', {}, ownerId, 'OWNER'),
       ).rejects.toThrow(DomainException);
     });
   });
@@ -127,7 +133,7 @@ describe('LodgingsService', () => {
 
       const result = await service.remove(
         '507f1f77bcf86cd799439011',
-        'owner1',
+        ownerId,
         'OWNER',
       );
 
@@ -140,7 +146,7 @@ describe('LodgingsService', () => {
       mockLodgingModel.findOne.mockResolvedValue(null);
 
       await expect(
-        service.remove('507f1f77bcf86cd799439011', 'owner1', 'OWNER'),
+        service.remove('507f1f77bcf86cd799439011', ownerId, 'OWNER'),
       ).rejects.toThrow(DomainException);
     });
   });

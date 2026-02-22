@@ -3,6 +3,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { UsersService } from './users.service';
 import { User } from './schemas/user.schema';
 import { DomainException } from '@common/exceptions/domain.exception';
+import { Types } from 'mongoose';
 
 type UserModelConstructor = {
   new (data: Partial<User>): {
@@ -19,7 +20,7 @@ describe('UsersService', () => {
   let service: UsersService;
   let userModelMock: UserModelConstructor;
 
-  const ownerId = 'owner-id';
+  const ownerId = new Types.ObjectId().toString();
 
   beforeEach(async () => {
     userModelMock = Object.assign(
@@ -128,7 +129,7 @@ describe('UsersService', () => {
   it('debe buscar usuario por id y owner', async () => {
     userModelMock.findOne.mockResolvedValue({ _id: 'id' });
 
-    const result = await service.findById(ownerId, 'id');
+    const result = await service.findById(ownerId, new Types.ObjectId().toString());
 
     expect(result).toBeDefined();
   });
@@ -142,7 +143,7 @@ describe('UsersService', () => {
       firstName: 'Juan',
     });
 
-    const result = await service.updateUser(ownerId, 'id', {
+    const result = await service.updateUser(ownerId, new Types.ObjectId().toString(), {
       firstName: 'Juan',
     });
 
@@ -152,9 +153,9 @@ describe('UsersService', () => {
   it('debe lanzar error si usuario no existe en update', async () => {
     userModelMock.findOneAndUpdate.mockResolvedValue(null);
 
-    await expect(service.updateUser(ownerId, 'id', {})).rejects.toBeInstanceOf(
-      DomainException,
-    );
+    await expect(
+      service.updateUser(ownerId, new Types.ObjectId().toString(), {}),
+    ).rejects.toBeInstanceOf(DomainException);
   });
 
   // -------------------------
@@ -164,7 +165,7 @@ describe('UsersService', () => {
   it('debe desactivar un usuario', async () => {
     userModelMock.updateOne.mockResolvedValue({ acknowledged: true });
 
-    await service.deactivateUser(ownerId, 'id');
+    await service.deactivateUser(ownerId, new Types.ObjectId().toString());
 
     expect(userModelMock.updateOne).toHaveBeenCalled();
   });
