@@ -1,5 +1,5 @@
 import { LodgingAmenity } from '@lodgings/enums/amenities.enum';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -12,6 +12,7 @@ import {
   Min,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { transformBooleanQuery } from '@common/utils/query-transformers.util';
 
 export class PublicLodgingsQueryDto {
   @ApiPropertyOptional({ example: 1 })
@@ -85,7 +86,7 @@ export class PublicLodgingsQueryDto {
 export class AdminLodgingsQueryDto extends PublicLodgingsQueryDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(transformBooleanQuery)
   @IsBoolean()
   includeInactive?: boolean = true;
 }

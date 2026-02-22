@@ -2,13 +2,14 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import { ERROR_CODES } from '@common/constants/error-code';
 import { DomainException } from '@common/exceptions/domain.exception';
 import { UserRole } from '@common/interfaces/role.interface';
 import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
 import { UsersQueryDto } from './dto/users-query.dto';
+import { toObjectIdOrThrow } from '@common/utils/object-id.util';
 
 @Injectable()
 export class UsersService {
@@ -22,9 +23,15 @@ export class UsersService {
     role: UserRole,
     dto: CreateUserDto,
   ): Promise<UserDocument> {
+    const ownerObjectId = toObjectIdOrThrow(ownerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
+
     if (role !== 'SUPERADMIN') {
       const count = await this.userModel.countDocuments({
-        ownerId: new Types.ObjectId(ownerId),
+        ownerId: ownerObjectId,
       });
 
       if (count >= 3) {
@@ -37,7 +44,7 @@ export class UsersService {
     }
 
     const existingUser = await this.userModel.findOne({
-      ownerId: new Types.ObjectId(ownerId),
+      ownerId: ownerObjectId,
       $or: [
         { email: dto.email.toLowerCase() },
         { username: dto.username.toLowerCase() },
@@ -53,14 +60,29 @@ export class UsersService {
     }
 
     const user = new this.userModel({
-      ownerId: new Types.ObjectId(ownerId),
+      ownerId: ownerObjectId,
       email: dto.email.toLowerCase(),
       username: dto.username.toLowerCase(),
       isPasswordSet: false,
       isActive: true,
     });
-
-    return user.save();
+    try {
+      return await user.save();
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code?: number }).code === 11000
+      ) {
+        throw new DomainException(
+          'Ya existe un usuario con ese email o username',
+          ERROR_CODES.USER_ALREADY_EXISTS,
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw error;
+    }
   }
 
   async findAllByOwner(
@@ -68,23 +90,39 @@ export class UsersService {
     query: UsersQueryDto,
   ): Promise<PaginatedResponse<UserDocument>> {
     const { page = 1, limit = 10 } = query;
-    const filters = { ownerId: new Types.ObjectId(ownerId) };
+    const filters = {
+      ownerId: toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
+    };
 
-    const data: UserDocument[] = await this.userModel
-      .find(filters)
-      .sort({ createdAt: 1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .exec();
-    const total = await this.userModel.countDocuments(filters).exec();
+    const [data, total] = await Promise.all([
+      this.userModel
+        .find(filters)
+        .sort({ createdAt: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      this.userModel.countDocuments(filters).exec(),
+    ]);
 
     return { data, total, page, limit };
   }
 
   async findById(ownerId: string, userId: string): Promise<UserDocument> {
     const user = await this.userModel.findOne({
-      _id: new Types.ObjectId(userId),
-      ownerId: new Types.ObjectId(ownerId),
+      _id: toObjectIdOrThrow(userId, {
+        message: 'Invalid user id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
+      ownerId: toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
     });
 
     if (!user) {
@@ -105,11 +143,19 @@ export class UsersService {
   ): Promise<UserDocument> {
     const updated = await this.userModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(userId),
-        ownerId: new Types.ObjectId(ownerId),
+        _id: toObjectIdOrThrow(userId, {
+          message: 'Invalid user id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+        ownerId: toObjectIdOrThrow(ownerId, {
+          message: 'Invalid owner id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
       },
       { $set: dto },
-      { new: true },
+      { new: true, runValidators: true },
     );
 
     if (!updated) {
@@ -126,8 +172,16 @@ export class UsersService {
   async deactivateUser(ownerId: string, userId: string): Promise<void> {
     await this.userModel.updateOne(
       {
-        _id: new Types.ObjectId(userId),
-        ownerId: new Types.ObjectId(ownerId),
+        _id: toObjectIdOrThrow(userId, {
+          message: 'Invalid user id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+        ownerId: toObjectIdOrThrow(ownerId, {
+          message: 'Invalid owner id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
       },
       { $set: { isActive: false } },
     );
@@ -144,8 +198,16 @@ export class UsersService {
   async setPassword(ownerId: string, userId: string, passwordHash: string) {
     return this.userModel.updateOne(
       {
-        _id: new Types.ObjectId(userId),
-        ownerId: new Types.ObjectId(ownerId),
+        _id: toObjectIdOrThrow(userId, {
+          message: 'Invalid user id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+        ownerId: toObjectIdOrThrow(ownerId, {
+          message: 'Invalid owner id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
       },
       {
         passwordHash,
@@ -160,7 +222,13 @@ export class UsersService {
     expiresAt: Date,
   ): Promise<void> {
     await this.userModel.updateOne(
-      { _id: new Types.ObjectId(userId) },
+      {
+        _id: toObjectIdOrThrow(userId, {
+          message: 'Invalid user id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+      },
       {
         resetPasswordCodeHash: codeHash,
         resetPasswordExpiresAt: expiresAt,
@@ -171,14 +239,26 @@ export class UsersService {
 
   async incrementResetAttempts(userId: string): Promise<void> {
     await this.userModel.updateOne(
-      { _id: new Types.ObjectId(userId) },
+      {
+        _id: toObjectIdOrThrow(userId, {
+          message: 'Invalid user id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+      },
       { $inc: { resetPasswordAttempts: 1 } },
     );
   }
 
   async clearResetData(userId: string): Promise<void> {
     await this.userModel.updateOne(
-      { _id: new Types.ObjectId(userId) },
+      {
+        _id: toObjectIdOrThrow(userId, {
+          message: 'Invalid user id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+      },
       {
         resetPasswordCodeHash: null,
         resetPasswordExpiresAt: null,

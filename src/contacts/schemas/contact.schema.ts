@@ -28,3 +28,11 @@ export class Contact {
 }
 
 export const ContactSchema = SchemaFactory.createForClass(Contact);
+
+ContactSchema.index(
+  { ownerId: 1, isDefault: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isDefault: true },
+  },
+);
