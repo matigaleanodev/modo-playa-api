@@ -21,6 +21,15 @@ class FakeContactModel {
   }
 }
 
+type UpdateManyFilters = {
+  ownerId: Types.ObjectId;
+  isDefault: boolean;
+};
+
+type FindFilters = {
+  ownerId: Types.ObjectId;
+};
+
 describe('ContactsService', () => {
   let service: ContactsService;
 
@@ -52,7 +61,13 @@ describe('ContactsService', () => {
 
     const result = await service.create(dto, ownerId);
 
-    expect(result).toEqual({ ...dto, ownerId });
+    expect(result).toMatchObject(dto);
+    expect((result as { ownerId: Types.ObjectId }).ownerId).toBeInstanceOf(
+      Types.ObjectId,
+    );
+    expect((result as { ownerId: Types.ObjectId }).ownerId.toString()).toBe(
+      ownerId,
+    );
   });
 
   it('debe desactivar default anterior si dto.isDefault es true', async () => {
@@ -61,10 +76,13 @@ describe('ContactsService', () => {
 
     await service.create(dto, ownerId);
 
-    expect(FakeContactModel.updateMany).toHaveBeenCalledWith(
-      { ownerId, isDefault: true },
-      { isDefault: false },
-    );
+    expect(FakeContactModel.updateMany).toHaveBeenCalledTimes(1);
+    const updateManyCalls = FakeContactModel.updateMany.mock
+      .calls as unknown as Array<[UpdateManyFilters, { isDefault: boolean }]>;
+    const [filters] = updateManyCalls[0];
+    expect(filters.isDefault).toBe(true);
+    expect(filters.ownerId.toString()).toBe(ownerId);
+    expect(updateManyCalls[0][1]).toEqual({ isDefault: false });
   });
 
   // -------------------------
@@ -76,13 +94,20 @@ describe('ContactsService', () => {
     const mockResult = [{ name: 'Contact' }];
 
     FakeContactModel.find.mockReturnValue({
-      sort: jest.fn().mockResolvedValue(mockResult),
+      sort: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockResult),
+      }),
     });
 
     const result = await service.findAll(false, ownerId, 'OWNER');
 
     expect(result).toEqual(mockResult);
     expect(FakeContactModel.find).toHaveBeenCalled();
+    const findCalls = FakeContactModel.find.mock.calls as unknown as Array<
+      [FindFilters]
+    >;
+    const [filters] = findCalls[0];
+    expect(filters.ownerId.toString()).toBe(ownerId);
   });
 
   // -------------------------
