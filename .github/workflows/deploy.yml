@@ -11,8 +11,8 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: matigaleanodev/portfolio-api
-  APP_DIR: /home/ec2-user/infra/apps/portfolio
+  IMAGE_NAME: matigaleanodev/modo-playa-api
+  APP_DIR: /home/ec2-user/infra/apps/modo-playa
 
 jobs:
   build-push-deploy:
@@ -67,7 +67,7 @@ jobs:
         env:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           OWNER: matigaleanodev
-          PACKAGE: portfolio-api
+          PACKAGE: modo-playa-api
           KEEP: 3
         run: |
           set -e
