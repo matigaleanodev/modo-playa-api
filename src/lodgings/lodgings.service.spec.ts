@@ -57,7 +57,7 @@ describe('LodgingsService', () => {
       const lodging = { _id: '1', active: true };
       mockLodgingModel.findOne.mockResolvedValue(lodging);
 
-      const result = await service.findPublicById('1');
+      const result = await service.findPublicById(lodgingId);
 
       expect(result).toEqual(lodging);
       expect(mockLodgingModel.findOne).toHaveBeenCalled();
@@ -66,7 +66,7 @@ describe('LodgingsService', () => {
     it('debe lanzar DomainException si no existe', async () => {
       mockLodgingModel.findOne.mockResolvedValue(null);
 
-      await expect(service.findPublicById('1')).rejects.toThrow(
+      await expect(service.findPublicById(lodgingId)).rejects.toThrow(
         DomainException,
       );
     });

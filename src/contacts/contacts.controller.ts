@@ -1,5 +1,6 @@
 import {
   Controller,
+  DefaultValuePipe,
   Get,
   Post,
   Body,
@@ -7,6 +8,7 @@ import {
   Param,
   Delete,
   Query,
+  ParseBoolPipe,
   UseGuards,
   Req,
 } from '@nestjs/common';
@@ -140,12 +142,13 @@ export class ContactsController {
   @Get(':id')
   async findOne(
     @Param('id') id: string,
-    @Query('includeInactive') includeInactive: boolean | undefined,
+    @Query('includeInactive', new DefaultValuePipe(false), ParseBoolPipe)
+    includeInactive: boolean,
     @Req() req: Request & { user: RequestUser },
   ): Promise<ContactResponseDto> {
     const contact = await this.contactsService.findOne(
       id,
-      includeInactive ?? false,
+      includeInactive,
       req.user.ownerId,
       req.user.role,
     );
