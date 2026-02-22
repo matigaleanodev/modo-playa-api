@@ -72,34 +72,44 @@ describe('ContactsController', () => {
   });
 
   it('debe llamar a findAll con ownerId y role', async () => {
-    const mockContacts = [
-      {
-        _id: '1',
-        name: 'Test',
-      },
-    ];
+    const query = { page: 1, limit: 10, includeInactive: false };
 
-    mockService.findAll.mockResolvedValue(mockContacts);
+    mockService.findAll.mockResolvedValue({
+      data: [
+        {
+          _id: '1',
+          name: 'Test',
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 10,
+    });
 
-    const result = await controller.findAll(false, mockRequest);
+    const result = await controller.findAll(query, mockRequest);
 
     expect(mockService.findAll).toHaveBeenCalledWith(
-      false,
+      query,
       mockUser.ownerId,
       mockUser.role,
     );
 
-    expect(result).toEqual([
-      {
-        id: '1',
-        name: 'Test',
-        email: undefined,
-        whatsapp: undefined,
-        isDefault: undefined,
-        active: undefined,
-        notes: undefined,
-      },
-    ]);
+    expect(result).toEqual({
+      data: [
+        {
+          id: '1',
+          name: 'Test',
+          email: undefined,
+          whatsapp: undefined,
+          isDefault: undefined,
+          active: undefined,
+          notes: undefined,
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 10,
+    });
   });
 
   it('debe llamar a findOne con parámetros correctos', async () => {

@@ -13,7 +13,12 @@ export const CONTACT_RESPONSE_EXAMPLE = {
   updatedAt: '2025-01-01T10:00:00.000Z',
 };
 
-export const CONTACT_LIST_RESPONSE_EXAMPLE = [CONTACT_RESPONSE_EXAMPLE];
+export const CONTACT_LIST_RESPONSE_EXAMPLE = {
+  data: [CONTACT_RESPONSE_EXAMPLE],
+  total: 1,
+  page: 1,
+  limit: 10,
+};
 
 export const DELETE_CONTACT_RESPONSE_EXAMPLE = {
   deleted: true,

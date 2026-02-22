@@ -9,6 +9,7 @@ class FakeContactModel {
   static updateMany = jest.fn();
   static find = jest.fn();
   static findOne = jest.fn();
+  static countDocuments = jest.fn();
 
   private readonly data: unknown;
 
@@ -89,19 +90,35 @@ describe('ContactsService', () => {
   // FIND ALL
   // -------------------------
 
-  it('OWNER debe filtrar por ownerId', async () => {
+  it('OWNER debe filtrar por ownerId y devolver paginado', async () => {
     const ownerId = new Types.ObjectId().toString();
     const mockResult = [{ name: 'Contact' }];
 
     FakeContactModel.find.mockReturnValue({
       sort: jest.fn().mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockResult),
+        skip: jest.fn().mockReturnValue({
+          limit: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue(mockResult),
+          }),
+        }),
       }),
     });
+    FakeContactModel.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(1),
+    });
 
-    const result = await service.findAll(false, ownerId, 'OWNER');
+    const result = await service.findAll(
+      { includeInactive: false, page: 1, limit: 10 },
+      ownerId,
+      'OWNER',
+    );
 
-    expect(result).toEqual(mockResult);
+    expect(result).toEqual({
+      data: mockResult,
+      total: 1,
+      page: 1,
+      limit: 10,
+    });
     expect(FakeContactModel.find).toHaveBeenCalled();
     const findCalls = FakeContactModel.find.mock.calls as unknown as Array<
       [FindFilters]

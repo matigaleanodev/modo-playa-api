@@ -110,16 +110,31 @@ describe('UsersService', () => {
   // FIND ALL
   // -------------------------
 
-  it('debe devolver usuarios por owner', async () => {
+  it('debe devolver usuarios paginados por owner', async () => {
     userModelMock.find.mockReturnValue({
       sort: () => ({
-        exec: jest.fn().mockResolvedValue([]),
+        skip: () => ({
+          limit: () => ({
+            exec: jest.fn().mockResolvedValue([]),
+          }),
+        }),
       }),
     });
+    userModelMock.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(0),
+    });
 
-    const result = await service.findAllByOwner(ownerId);
+    const result = await service.findAllByOwner(ownerId, {
+      page: 1,
+      limit: 10,
+    });
 
-    expect(result).toEqual([]);
+    expect(result).toEqual({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+    });
   });
 
   // -------------------------

@@ -7,6 +7,8 @@ import { User, UserDocument } from './schemas/user.schema';
 import { ERROR_CODES } from '@common/constants/error-code';
 import { DomainException } from '@common/exceptions/domain.exception';
 import { UserRole } from '@common/interfaces/role.interface';
+import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
+import { UsersQueryDto } from './dto/users-query.dto';
 
 @Injectable()
 export class UsersService {
@@ -61,11 +63,22 @@ export class UsersService {
     return user.save();
   }
 
-  async findAllByOwner(ownerId: string): Promise<UserDocument[]> {
-    return this.userModel
-      .find({ ownerId: new Types.ObjectId(ownerId) })
+  async findAllByOwner(
+    ownerId: string,
+    query: UsersQueryDto,
+  ): Promise<PaginatedResponse<UserDocument>> {
+    const { page = 1, limit = 10 } = query;
+    const filters = { ownerId: new Types.ObjectId(ownerId) };
+
+    const data: UserDocument[] = await this.userModel
+      .find(filters)
       .sort({ createdAt: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
       .exec();
+    const total = await this.userModel.countDocuments(filters).exec();
+
+    return { data, total, page, limit };
   }
 
   async findById(ownerId: string, userId: string): Promise<UserDocument> {

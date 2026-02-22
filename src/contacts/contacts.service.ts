@@ -7,6 +7,8 @@ import { UpdateContactDto } from './dto/update-contact.dto';
 import { DomainException } from '@common/exceptions/domain.exception';
 import { ERROR_CODES } from '@common/constants/error-code';
 import { UserRole } from '@common/interfaces/role.interface';
+import { ContactsQueryDto } from './dto/contacts-query.dto';
+import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
 
 @Injectable()
 export class ContactsService {
@@ -35,10 +37,11 @@ export class ContactsService {
   }
 
   async findAll(
-    includeInactive: boolean = false,
+    query: ContactsQueryDto,
     ownerId: string,
     role: UserRole,
-  ): Promise<ContactDocument[]> {
+  ): Promise<PaginatedResponse<ContactDocument>> {
+    const { includeInactive = false, page = 1, limit = 10 } = query;
     const filters: QueryFilter<ContactDocument> = {};
 
     if (!includeInactive) {
@@ -49,7 +52,15 @@ export class ContactsService {
       filters.ownerId = new Types.ObjectId(ownerId);
     }
 
-    return this.contactModel.find(filters).sort({ createdAt: -1 }).exec();
+    const data: ContactDocument[] = await this.contactModel
+      .find(filters)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .exec();
+    const total = await this.contactModel.countDocuments(filters).exec();
+
+    return { data, total, page, limit };
   }
 
   async findOne(

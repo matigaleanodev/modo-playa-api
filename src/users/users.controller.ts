@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  Query,
   UseGuards,
   Req,
 } from '@nestjs/common';
@@ -21,6 +22,7 @@ import {
   ApiResponse,
   ApiParam,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import {
   CREATE_USER_EXAMPLE,
@@ -30,6 +32,8 @@ import {
 } from './users.swagger';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UsersMapper } from './users.mapper';
+import { UsersQueryDto } from './dto/users-query.dto';
+import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
 
 @ApiTags('Admin - Users')
 @ApiBearerAuth('access-token')
@@ -75,13 +79,37 @@ export class UsersController {
     description: 'Listado de usuarios',
     schema: { example: USER_LIST_RESPONSE_EXAMPLE },
   })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Número de página',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Cantidad de registros por página',
+  })
   @Get()
   async findAll(
+    @Query() query: UsersQueryDto,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<UserResponseDto[]> {
-    const users = await this.usersService.findAllByOwner(req.user.ownerId);
+  ): Promise<PaginatedResponse<UserResponseDto>> {
+    const result = await this.usersService.findAllByOwner(
+      req.user.ownerId,
+      query,
+    );
+    const data: UserResponseDto[] = result.data.map((user) =>
+      UsersMapper.toResponse(user),
+    );
 
-    return users.map((user) => UsersMapper.toResponse(user));
+    return {
+      data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    };
   }
 
   @ApiOperation({
