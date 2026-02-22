@@ -26,6 +26,9 @@ import { UpdateContactDto } from './dto/update-contact.dto';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
 import { ContactResponseDto } from './dto/contact-response.dto';
+import { ContactsQueryDto } from './dto/contacts-query.dto';
+import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
+import { ContactDocument } from './schemas/contact.schema';
 
 import {
   CONTACT_RESPONSE_EXAMPLE,
@@ -67,6 +70,18 @@ export class ContactsController {
       'Devuelve los contactos del owner autenticado. SUPERADMIN puede ver todos.',
   })
   @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Número de página',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Cantidad de registros por página',
+  })
+  @ApiQuery({
     name: 'includeInactive',
     required: false,
     type: Boolean,
@@ -79,16 +94,26 @@ export class ContactsController {
   })
   @Get()
   async findAll(
-    @Query('includeInactive') includeInactive: boolean | undefined,
+    @Query() query: ContactsQueryDto,
     @Req() req: Request & { user: RequestUser },
-  ): Promise<ContactResponseDto[]> {
-    const contacts = await this.contactsService.findAll(
-      includeInactive,
-      req.user.ownerId,
-      req.user.role,
+  ): Promise<PaginatedResponse<ContactResponseDto>> {
+    const result: PaginatedResponse<ContactDocument> =
+      await this.contactsService.findAll(
+        query,
+        req.user.ownerId,
+        req.user.role,
+      );
+    const data: ContactResponseDto[] = result.data.map(
+      (contact: ContactDocument): ContactResponseDto =>
+        ContactMapper.toResponse(contact),
     );
 
-    return contacts.map((contact) => ContactMapper.toResponse(contact));
+    return {
+      data,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    };
   }
 
   @ApiOperation({

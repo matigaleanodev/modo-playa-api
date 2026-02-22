@@ -71,20 +71,30 @@ describe('UsersController', () => {
   });
 
   it('debe delegar findAllByOwner con ownerId del JWT', async () => {
-    mockService.findAllByOwner.mockResolvedValue([
-      {
-        _id: '1',
-        email: 'a@mail.com',
-        username: 'a',
-        isPasswordSet: true,
-      },
-    ]);
+    const query = { page: 1, limit: 10 };
+    mockService.findAllByOwner.mockResolvedValue({
+      data: [
+        {
+          _id: '1',
+          email: 'a@mail.com',
+          username: 'a',
+          isPasswordSet: true,
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 10,
+    });
 
-    const result = await controller.findAll(mockRequest);
+    const result = await controller.findAll(query, mockRequest);
 
-    expect(mockService.findAllByOwner).toHaveBeenCalledWith(mockUser.ownerId);
+    expect(mockService.findAllByOwner).toHaveBeenCalledWith(
+      mockUser.ownerId,
+      query,
+    );
 
-    expect(result[0].id).toBe('1');
+    expect(result.data[0].id).toBe('1');
+    expect(result.total).toBe(1);
   });
 
   it('debe delegar findById con ownerId del JWT', async () => {

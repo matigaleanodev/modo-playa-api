@@ -22,4 +22,9 @@ export const UPDATE_USER_EXAMPLE = {
   phone: '+5491122334455',
 };
 
-export const USER_LIST_RESPONSE_EXAMPLE = [USER_RESPONSE_EXAMPLE];
+export const USER_LIST_RESPONSE_EXAMPLE = {
+  data: [USER_RESPONSE_EXAMPLE],
+  total: 1,
+  page: 1,
+  limit: 10,
+};
