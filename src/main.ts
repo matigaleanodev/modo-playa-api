@@ -8,10 +8,10 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const corsOrigins = process.env.CORS_ORIGIN?.split(',') ?? [];
+  //const corsOrigins = process.env.CORS_ORIGIN?.split(',') ?? [];
 
   app.enableCors({
-    origin: corsOrigins,
+    origin: '*',
   });
 
   app.useGlobalPipes(
