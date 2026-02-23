@@ -6,6 +6,8 @@ import { Lodging } from '@lodgings/schemas/lodging.schema';
 import { Contact } from '@contacts/schemas/contact.schema';
 import { User } from '@users/schemas/user.schema';
 
+type AggregatePipeline = Array<Record<string, unknown>>;
+
 const createQueryMock = <T>(result: T) => ({
   sort: jest.fn().mockReturnValue({
     limit: jest.fn().mockReturnValue({
@@ -16,22 +18,29 @@ const createQueryMock = <T>(result: T) => ({
   }),
 });
 
+type QueryMock = ReturnType<typeof createQueryMock<unknown[]>>;
+
+type DashboardModelMock = {
+  aggregate: jest.Mock<Promise<unknown>, [AggregatePipeline]>;
+  find: jest.Mock<QueryMock, [unknown]>;
+};
+
 describe('DashboardService', () => {
   let service: DashboardService;
 
-  const lodgingModelMock = {
-    aggregate: jest.fn(),
-    find: jest.fn(),
+  const lodgingModelMock: DashboardModelMock = {
+    aggregate: jest.fn() as jest.Mock<Promise<unknown>, [AggregatePipeline]>,
+    find: jest.fn() as jest.Mock<QueryMock, [unknown]>,
   };
 
-  const contactModelMock = {
-    aggregate: jest.fn(),
-    find: jest.fn(),
+  const contactModelMock: DashboardModelMock = {
+    aggregate: jest.fn() as jest.Mock<Promise<unknown>, [AggregatePipeline]>,
+    find: jest.fn() as jest.Mock<QueryMock, [unknown]>,
   };
 
-  const userModelMock = {
-    aggregate: jest.fn(),
-    find: jest.fn(),
+  const userModelMock: DashboardModelMock = {
+    aggregate: jest.fn() as jest.Mock<Promise<unknown>, [AggregatePipeline]>,
+    find: jest.fn() as jest.Mock<QueryMock, [unknown]>,
   };
 
   beforeEach(async () => {
@@ -107,13 +116,25 @@ describe('DashboardService', () => {
 
     const result = await service.getSummary(ownerId, 'OWNER');
 
-    const lodgingPipeline = lodgingModelMock.aggregate.mock.calls[0][0];
-    const contactPipeline = contactModelMock.aggregate.mock.calls[0][0];
-    const userPipeline = userModelMock.aggregate.mock.calls[0][0];
+    const lodgingPipeline = lodgingModelMock.aggregate.mock.calls[0]?.[0];
+    const contactPipeline = contactModelMock.aggregate.mock.calls[0]?.[0];
+    const userPipeline = userModelMock.aggregate.mock.calls[0]?.[0];
 
-    expect(lodgingPipeline[0].$match.ownerId.toString()).toBe(ownerId);
-    expect(contactPipeline[0].$match.ownerId.toString()).toBe(ownerId);
-    expect(userPipeline[0].$match.ownerId.toString()).toBe(ownerId);
+    expect(lodgingPipeline).toBeDefined();
+    expect(contactPipeline).toBeDefined();
+    expect(userPipeline).toBeDefined();
+
+    const lodgingMatch = lodgingPipeline?.[0]?.$match as {
+      ownerId: Types.ObjectId;
+    };
+    const contactMatch = contactPipeline?.[0]?.$match as {
+      ownerId: Types.ObjectId;
+    };
+    const userMatch = userPipeline?.[0]?.$match as { ownerId: Types.ObjectId };
+
+    expect(lodgingMatch.ownerId.toString()).toBe(ownerId);
+    expect(contactMatch.ownerId.toString()).toBe(ownerId);
+    expect(userMatch.ownerId.toString()).toBe(ownerId);
 
     expect(result.metrics.lodgings.total).toBe(2);
     expect(result.metrics.contacts.incomplete).toBe(1);
@@ -144,9 +165,13 @@ describe('DashboardService', () => {
 
     const result = await service.getSummary(ownerId, 'SUPERADMIN');
 
-    expect(lodgingModelMock.aggregate.mock.calls[0][0][0].$match).toEqual({});
-    expect(contactModelMock.aggregate.mock.calls[0][0][0].$match).toEqual({});
-    expect(userModelMock.aggregate.mock.calls[0][0][0].$match).toEqual({});
+    const lodgingPipeline = lodgingModelMock.aggregate.mock.calls[0]?.[0];
+    const contactPipeline = contactModelMock.aggregate.mock.calls[0]?.[0];
+    const userPipeline = userModelMock.aggregate.mock.calls[0]?.[0];
+
+    expect(lodgingPipeline?.[0]?.$match).toEqual({});
+    expect(contactPipeline?.[0]?.$match).toEqual({});
+    expect(userPipeline?.[0]?.$match).toEqual({});
     expect(result.ownerScope.role).toBe('SUPERADMIN');
     expect(result.recentActivity.source).toBe('none');
   });

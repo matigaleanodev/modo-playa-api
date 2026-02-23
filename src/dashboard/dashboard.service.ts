@@ -52,7 +52,8 @@ type UsersTotals = {
   neverLoggedIn: number;
 };
 
-type RecentActivityItem = DashboardSummaryResponseDto['recentActivity']['items'][number];
+type RecentActivityItem =
+  DashboardSummaryResponseDto['recentActivity']['items'][number];
 
 type RecentLodging = {
   _id: Types.ObjectId | string;
@@ -131,9 +132,7 @@ export class DashboardService {
     };
   }
 
-  private async getLodgingsSummary(
-    ownerId: Types.ObjectId | null,
-  ): Promise<{
+  private async getLodgingsSummary(ownerId: Types.ObjectId | null): Promise<{
     metrics: DashboardSummaryResponseDto['metrics']['lodgings'];
     distributions: DashboardSummaryResponseDto['distributions'];
   }> {
@@ -242,7 +241,8 @@ export class DashboardService {
       },
     ];
 
-    const [result] = await this.lodgingModel.aggregate<LodgingFacetResult>(pipeline);
+    const [result] =
+      await this.lodgingModel.aggregate<LodgingFacetResult>(pipeline);
 
     const totals = result?.totals?.[0] ?? {
       total: 0,
@@ -347,7 +347,8 @@ export class DashboardService {
       { $project: { _id: 0 } },
     ];
 
-    const [totals] = await this.contactModel.aggregate<ContactsTotals>(pipeline);
+    const [totals] =
+      await this.contactModel.aggregate<ContactsTotals>(pipeline);
 
     return (
       totals ?? {
@@ -378,7 +379,11 @@ export class DashboardService {
           pendingActivation: { $sum: { $cond: ['$isPasswordSet', 0, 1] } },
           neverLoggedIn: {
             $sum: {
-              $cond: [{ $eq: [{ $ifNull: ['$lastLoginAt', null] }, null] }, 1, 0],
+              $cond: [
+                { $eq: [{ $ifNull: ['$lastLoginAt', null] }, null] },
+                1,
+                0,
+              ],
             },
           },
         },
@@ -403,8 +408,12 @@ export class DashboardService {
   private async getRecentActivity(
     ownerId: Types.ObjectId | null,
   ): Promise<DashboardSummaryResponseDto['recentActivity']> {
-    const lodgingsMatch: QueryFilter<LodgingDocument> = ownerId ? { ownerId } : {};
-    const contactsMatch: QueryFilter<ContactDocument> = ownerId ? { ownerId } : {};
+    const lodgingsMatch: QueryFilter<LodgingDocument> = ownerId
+      ? { ownerId }
+      : {};
+    const contactsMatch: QueryFilter<ContactDocument> = ownerId
+      ? { ownerId }
+      : {};
     const usersMatch: QueryFilter<UserDocument> = ownerId ? { ownerId } : {};
 
     const [lodgings, contacts, users] = await Promise.all([
@@ -451,7 +460,10 @@ export class DashboardService {
     kind: 'contact',
     doc: RecentContact,
   ): RecentActivityItem | null;
-  private toRecentItem(kind: 'user', doc: RecentUser): RecentActivityItem | null;
+  private toRecentItem(
+    kind: 'user',
+    doc: RecentUser,
+  ): RecentActivityItem | null;
   private toRecentItem(
     kind: 'lodging' | 'contact' | 'user',
     doc: RecentLodging | RecentContact | RecentUser,
