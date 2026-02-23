@@ -444,7 +444,7 @@ export class DashboardService {
     ]
       .filter((item): item is RecentActivityItem => item !== null)
       .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
-      .slice(0, 10);
+      .slice(0, 5);
 
     return {
       items,
