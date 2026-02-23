@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsInt, IsOptional, Min } from 'class-validator';
+import { transformClampedIntQuery } from '@common/utils/query-transformers.util';
 
 export class UsersQueryDto {
   @ApiPropertyOptional({ example: 1 })
@@ -12,9 +13,8 @@ export class UsersQueryDto {
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
-  @Type(() => Number)
+  @Transform(transformClampedIntQuery({ min: 1, max: 50 }))
   @IsInt()
   @Min(1)
-  @Max(50)
   limit?: number = 10;
 }
