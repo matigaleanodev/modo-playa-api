@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/modo_playa_tentativo.png" alt="Foodly Notes" width="200" />
+  <img src="docs/assets/modo_playa_transparente.png" alt="Foodly Notes" width="200" />
 </p>
 
 # Modo Playa -- API
@@ -23,6 +23,7 @@ aplicación.
 - **Base de datos**: MongoDB + Mongoose
 - **Autenticación**: JWT (ownerId incluido en el payload)
 - **Email transaccional**: Resend
+- **Storage de media**: Cloudflare R2 (S3 compatible)
 - **Validación**: class-validator + ValidationPipe global
 - **Testing**: Jest (services y controllers con cobertura unitaria)
 
@@ -59,6 +60,7 @@ sus propios usuarios
 - Creación de usuarios por propietario
 - Listado por owner
 - Actualización y desactivación
+- Imagen de perfil con upload directo a R2 + confirmación backend
 
 ### 📇 Contacts
 
@@ -74,6 +76,8 @@ sus propios usuarios
 - Paginación
 - Rango de disponibilidad validado
 - Relación con Contact
+- Gestión de imágenes (hasta 5) con imagen predeterminada
+- Upload directo a R2 con URL firmada + confirmación y normalización a WebP
 
 ### ✉️ Mail
 
@@ -95,6 +99,9 @@ Ejemplos:
 - `GET /api/admin/lodgings`
 - `POST /api/admin/contacts`
 
+La API también incluye endpoints administrativos para gestión de media
+(health de R2, imágenes de alojamientos e imagen de perfil de usuario).
+
 ---
 
 ## 🧪 Testing
@@ -111,3 +118,7 @@ Ejemplos:
 Ver guía completa en:
 
 👉 [DEVELOPMENT.md](./DEVELOPMENT.md)
+
+Variables de entorno de ejemplo:
+
+👉 [`.env.example`](./.env.example)

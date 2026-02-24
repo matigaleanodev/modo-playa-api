@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Request,
   UseGuards,
@@ -23,6 +24,7 @@ import { JwtAuthGuard } from './guard/auth.guard';
 import { ChangePasswordDto } from './dto/chage-password.dto';
 import { VerifyResetCodeDto } from './dto/verifiy-reset-code.dto';
 import { AuthResponse } from './interfaces/auth-response.interface';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 
 import {
   AUTH_TOKEN_RESPONSE_EXAMPLE,
@@ -205,5 +207,20 @@ export class AuthController {
   @Get('me')
   me(@Request() req: { user: RequestUser }): Promise<AuthUserResponse> {
     return this.authService.me(req.user);
+  }
+
+  @ApiOperation({
+    summary: 'Actualizar perfil propio',
+    description:
+      'Actualiza datos básicos del usuario autenticado. La imagen de perfil se gestiona con endpoints de media.',
+  })
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateMe(
+    @Request() req: { user: RequestUser },
+    @Body() dto: UpdateMyProfileDto,
+  ): Promise<AuthUserResponse> {
+    return this.authService.updateMe(req.user, dto);
   }
 }

@@ -294,7 +294,7 @@ export class LodgingsService {
       filters.ownerId = ownerObjectId;
     }
     const lodging = await this.lodgingModel.findOneAndUpdate(filters, dto, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
 

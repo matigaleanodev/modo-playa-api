@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { MailService } from '@mail/mail.service';
 import { AuthException } from '@common/exceptions/auth.exception';
+import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
@@ -42,6 +43,15 @@ describe('AuthService', () => {
     sendPasswordChanged: jest.fn(),
   };
 
+  const mockMediaUrlBuilder = {
+    buildPublicUrl: jest.fn((key: string) => `https://media.test/${key}`),
+    buildLodgingVariants: jest.fn((key: string) => ({
+      thumb: `https://media.test/thumb/${key}`,
+      card: `https://media.test/card/${key}`,
+      hero: `https://media.test/hero/${key}`,
+    })),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -50,6 +60,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: MailService, useValue: mockMailService },
+        { provide: MEDIA_URL_BUILDER, useValue: mockMediaUrlBuilder },
       ],
     }).compile();
 
@@ -168,5 +179,67 @@ describe('AuthService', () => {
 
     expect(result.accessToken).toBeDefined();
     expect(result.refreshToken).toBeDefined();
+  });
+
+  it('debe devolver avatarUrl y profileImage en me cuando existe imagen de perfil', async () => {
+    mockUsersService.findById.mockResolvedValue({
+      _id: 'id1',
+      ownerId: 'owner1',
+      email: 'test@test.com',
+      username: 'test',
+      avatarUrl: null,
+      phone: '123',
+      profileImage: {
+        imageId: 'img1',
+        key: 'users/id1/profile/img1/original.webp',
+        width: 100,
+        height: 100,
+        bytes: 1000,
+        mime: 'image/webp',
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+      },
+    });
+
+    const result = await service.me({
+      ownerId: 'owner1',
+      userId: 'id1',
+      role: 'OWNER',
+      purpose: 'ACCESS',
+    });
+
+    expect(result.avatarUrl).toContain('https://media.test/');
+    expect(result.profileImage?.imageId).toBe('img1');
+    expect(result.phone).toBe('123');
+  });
+
+  it('debe actualizar perfil propio con updateMe', async () => {
+    mockUsersService.updateUser = jest.fn().mockResolvedValue({
+      _id: 'id1',
+      ownerId: 'owner1',
+      email: 'test@test.com',
+      username: 'test',
+      firstName: 'Juan',
+      lastName: 'Perez',
+      displayName: 'Juan Perez',
+      phone: '123',
+      avatarUrl: null,
+    });
+
+    const result = await service.updateMe(
+      {
+        ownerId: 'owner1',
+        userId: 'id1',
+        role: 'OWNER',
+        purpose: 'ACCESS',
+      },
+      {
+        firstName: 'Juan',
+      },
+    );
+
+    expect(mockUsersService.updateUser).toHaveBeenCalledWith('owner1', 'id1', {
+      firstName: 'Juan',
+    });
+    expect(result.firstName).toBe('Juan');
   });
 });

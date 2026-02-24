@@ -1,5 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import {
+  UserProfileImage,
+  UserProfileImageSchema,
+} from './user-profile-image.schema';
+import {
+  PendingUserProfileImageUpload,
+  PendingUserProfileImageUploadSchema,
+} from './pending-user-profile-image-upload.schema';
 
 export type UserDocument = User & Document;
 
@@ -50,6 +58,18 @@ export class User {
 
   @Prop()
   avatarUrl?: string;
+
+  @Prop({
+    type: UserProfileImageSchema,
+    required: false,
+  })
+  profileImage?: UserProfileImage;
+
+  @Prop({
+    type: [PendingUserProfileImageUploadSchema],
+    default: [],
+  })
+  pendingProfileImageUploads!: PendingUserProfileImageUpload[];
 
   @Prop()
   phone?: string;

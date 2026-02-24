@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { UserProfileImageResponseDto } from './user-profile-image-response.dto';
 
 export class UserResponseDto {
   @ApiProperty()
@@ -30,6 +32,9 @@ export class UserResponseDto {
 
   @ApiProperty({ required: false })
   avatarUrl?: string;
+
+  @ApiPropertyOptional({ type: UserProfileImageResponseDto })
+  profileImage?: UserProfileImageResponseDto;
 
   @ApiProperty({ required: false })
   phone?: string;

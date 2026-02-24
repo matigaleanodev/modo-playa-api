@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { LodgingAmenity } from '@lodgings/enums/amenities.enum';
 import { LodgingType } from '@lodgings/enums/lodging-type.enum';
 import { PriceUnit } from '@lodgings/enums/price-unit.enum';
+import { LodgingImageResponseDto } from './lodging-image-response.dto';
 
 export class LodgingResponseDto {
   @ApiProperty()
@@ -51,4 +52,7 @@ export class LodgingResponseDto {
 
   @ApiProperty({ type: [String] })
   images!: string[];
+
+  @ApiProperty({ type: [LodgingImageResponseDto], required: false })
+  mediaImages?: LodgingImageResponseDto[];
 }

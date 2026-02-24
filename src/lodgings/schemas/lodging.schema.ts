@@ -5,6 +5,11 @@ import { LodgingAmenity } from '@lodgings/enums/amenities.enum';
 import { LodgingType } from '@lodgings/enums/lodging-type.enum';
 import { PriceUnit } from '@lodgings/enums/price-unit.enum';
 import { Contact } from '@contacts/schemas/contact.schema';
+import { LodgingImage, LodgingImageSchema } from './lodging-image.schema';
+import {
+  PendingLodgingImageUpload,
+  PendingLodgingImageUploadSchema,
+} from './pending-lodging-image-upload.schema';
 
 export type LodgingDocument = HydratedDocument<Lodging>;
 
@@ -92,6 +97,19 @@ export class Lodging {
     default: [],
   })
   images!: string[];
+
+  // Transición: nuevo modelo de imágenes procesadas con metadata (R2 + confirm).
+  @Prop({
+    type: [LodgingImageSchema],
+    default: [],
+  })
+  mediaImages!: LodgingImage[];
+
+  @Prop({
+    type: [PendingLodgingImageUploadSchema],
+    default: [],
+  })
+  pendingImageUploads!: PendingLodgingImageUpload[];
 
   @Prop({
     type: [AvailabilityRange],

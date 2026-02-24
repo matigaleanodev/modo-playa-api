@@ -20,6 +20,7 @@ strict data isolation.
 - **Database**: MongoDB + Mongoose
 - **Authentication**: JWT (ownerId embedded in payload)
 - **Transactional Email**: Resend
+- **Media Storage**: Cloudflare R2 (S3-compatible)
 - **Validation**: class-validator + global ValidationPipe
 - **Testing**: Jest (unit-tested services and controllers)
 
@@ -55,6 +56,7 @@ own lodgings - Can only manage their own users
 - Owner-based user creation
 - Owner-based listing
 - Update and deactivation
+- Profile image with direct upload to R2 + backend confirmation
 
 ### 📇 Contacts
 
@@ -70,6 +72,8 @@ own lodgings - Can only manage their own users
 - Pagination
 - Availability range validation
 - Contact relation
+- Image management (up to 5) with default image
+- Direct upload to R2 via signed URL + confirmation and WebP normalization
 
 ### ✉️ Mail
 
@@ -92,3 +96,7 @@ own lodgings - Can only manage their own users
 See full guide:
 
 👉 [DEVELOPMENT.en.md](./DEVELOPMENT.en.md)
+
+Example environment variables:
+
+👉 [`.env.example`](./.env.example)
