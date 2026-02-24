@@ -8,12 +8,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '@users/users.module';
 import { MailModule } from '@mail/mail.module';
+import { MediaModule } from '@media/media.module';
 
 @Module({
   imports: [
     PassportModule,
     UsersModule,
     MailModule,
+    MediaModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -21,6 +21,9 @@ import { ChangePasswordDto } from './dto/chage-password.dto';
 import { VerifyResetCodeDto } from './dto/verifiy-reset-code.dto';
 import { MailService } from '@mail/mail.service';
 import { IdentifierDto } from './dto/identifier.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
+import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
+import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +32,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
+    @Inject(MEDIA_URL_BUILDER)
+    private readonly mediaUrlBuilder: MediaUrlBuilder,
   ) {}
   async requestActivation(identifier: string): Promise<void> {
     const normalized = identifier.toLowerCase();
@@ -504,41 +509,36 @@ export class AuthService {
     accessToken: string,
     refreshToken: string,
   ): AuthResponse {
-    const role = this.resolveUserRole(user);
-
-    const authUser: AuthUserResponse = {
-      id: user._id.toString(),
-      email: user.email,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      role,
-    };
-
     return {
       accessToken,
       refreshToken,
-      user: authUser,
+      user: this.toAuthUserResponse(user),
     };
   }
 
   async me(user: RequestUser): Promise<AuthUserResponse> {
     const dbUser = await this.usersService.findById(user.ownerId, user.userId);
 
-    const role = this.resolveUserRole(dbUser);
+    return this.toAuthUserResponse(dbUser);
+  }
 
-    return {
-      id: dbUser._id.toString(),
-      email: dbUser.email,
-      username: dbUser.username,
-      firstName: dbUser.firstName,
-      lastName: dbUser.lastName,
-      displayName: dbUser.displayName,
-      avatarUrl: dbUser.avatarUrl,
-      role,
-    };
+  async updateMe(
+    user: RequestUser,
+    dto: UpdateMyProfileDto,
+  ): Promise<AuthUserResponse> {
+    if (user.purpose !== 'ACCESS') {
+      throw new AuthException(
+        'Invalid token purpose',
+        ERROR_CODES.INVALID_CREDENTIALS,
+      );
+    }
+
+    const updated = await this.usersService.updateUser(
+      user.ownerId,
+      user.userId,
+      dto,
+    );
+    return this.toAuthUserResponse(updated);
   }
 
   private resolveUserRole(user: UserDocument): 'OWNER' | 'SUPERADMIN' {
@@ -553,5 +553,37 @@ export class AuthService {
 
   private generateSixDigitCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private toAuthUserResponse(user: UserDocument): AuthUserResponse {
+    const role = this.resolveUserRole(user);
+    const profileImage = user.profileImage
+      ? {
+          imageId: user.profileImage.imageId,
+          key: user.profileImage.key,
+          width: user.profileImage.width,
+          height: user.profileImage.height,
+          bytes: user.profileImage.bytes,
+          mime: user.profileImage.mime,
+          createdAt: new Date(user.profileImage.createdAt).toISOString(),
+          url: this.mediaUrlBuilder.buildPublicUrl(user.profileImage.key),
+          variants: this.mediaUrlBuilder.buildLodgingVariants(
+            user.profileImage.key,
+          ),
+        }
+      : undefined;
+
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      displayName: user.displayName,
+      avatarUrl: profileImage?.url ?? user.avatarUrl,
+      profileImage,
+      phone: user.phone,
+      role,
+    };
   }
 }

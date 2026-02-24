@@ -155,7 +155,7 @@ export class UsersService {
         }),
       },
       { $set: dto },
-      { new: true, runValidators: true },
+      { returnDocument: 'after', runValidators: true },
     );
 
     if (!updated) {

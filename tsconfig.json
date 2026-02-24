@@ -32,7 +32,10 @@
       "@common/*": ["src/common/*"],
 
       "@mail": ["src/mail"],
-      "@mail/*": ["src/mail/*"]
+      "@mail/*": ["src/mail/*"],
+
+      "@media": ["src/media"],
+      "@media/*": ["src/media/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

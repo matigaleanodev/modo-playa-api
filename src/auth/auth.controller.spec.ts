@@ -15,6 +15,8 @@ describe('AuthController', () => {
     forgotPassword: jest.fn(),
     verifyResetCode: jest.fn(),
     resetPassword: jest.fn(),
+    me: jest.fn(),
+    updateMe: jest.fn(),
   };
 
   const mockUser: RequestUser = {
@@ -136,5 +138,36 @@ describe('AuthController', () => {
     expect(mockAuthService.resetPassword).toHaveBeenCalledWith(mockUser, dto);
 
     expect(result).toEqual({ message: 'ok' });
+  });
+
+  it('debe delegar me', async () => {
+    mockAuthService.me.mockResolvedValue({
+      id: 'u1',
+      email: 'a',
+      username: 'b',
+    });
+
+    const result = await controller.me(mockRequest as { user: RequestUser });
+
+    expect(mockAuthService.me).toHaveBeenCalledWith(mockUser);
+    expect(result.id).toBe('u1');
+  });
+
+  it('debe delegar updateMe', async () => {
+    const dto = { firstName: 'Juan' };
+    mockAuthService.updateMe.mockResolvedValue({
+      id: 'u1',
+      email: 'a',
+      username: 'b',
+      firstName: 'Juan',
+    });
+
+    const result = await controller.updateMe(
+      mockRequest as { user: RequestUser },
+      dto,
+    );
+
+    expect(mockAuthService.updateMe).toHaveBeenCalledWith(mockUser, dto);
+    expect(result.firstName).toBe('Juan');
   });
 });
