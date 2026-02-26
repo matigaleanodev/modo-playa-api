@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Inject,
   Post,
   Body,
   Patch,
@@ -29,6 +30,8 @@ import { RequestUser } from '@auth/interfaces/request-user.interface';
 import { PaginatedResponse } from '@common/interfaces/pagination-response.interface';
 import { LodgingResponseDto } from '@lodgings/dto/lodging-response.dto';
 import { LodgingMapper } from '@lodgings/mappers/lodgings.mapper';
+import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
+import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
 
 import {
   LODGING_RESPONSE_EXAMPLE,
@@ -41,7 +44,11 @@ import {
 @Controller('admin/lodgings')
 @UseGuards(JwtAuthGuard)
 export class LodgingsAdminController {
-  constructor(private readonly lodgingsService: LodgingsService) {}
+  constructor(
+    private readonly lodgingsService: LodgingsService,
+    @Inject(MEDIA_URL_BUILDER)
+    private readonly mediaUrlBuilder: MediaUrlBuilder,
+  ) {}
 
   @ApiOperation({
     summary: 'Crear alojamiento',
@@ -59,7 +66,7 @@ export class LodgingsAdminController {
   ): Promise<LodgingResponseDto> {
     const lodging = await this.lodgingsService.create(dto, req.user.ownerId);
 
-    return LodgingMapper.toResponse(lodging);
+    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
   @ApiOperation({
@@ -97,7 +104,9 @@ export class LodgingsAdminController {
 
     return {
       ...result,
-      data: result.data.map((lodging) => LodgingMapper.toResponse(lodging)),
+      data: result.data.map((lodging) =>
+        LodgingMapper.toResponse(lodging, this.mediaUrlBuilder),
+      ),
     };
   }
 
@@ -127,7 +136,7 @@ export class LodgingsAdminController {
       req.user.role,
     );
 
-    return LodgingMapper.toResponse(lodging);
+    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
   @ApiOperation({
@@ -158,7 +167,7 @@ export class LodgingsAdminController {
       req.user.role,
     );
 
-    return LodgingMapper.toResponse(lodging);
+    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
   @ApiOperation({

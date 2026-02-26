@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LodgingsPublicController } from './lodgings-public.controller';
 import { LodgingsService } from '@lodgings/lodgings.service';
 import { PublicLodgingsQueryDto } from '@lodgings/dto/pagination-query.dto';
+import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
 
 describe('LodgingsPublicController', () => {
   let controller: LodgingsPublicController;
@@ -11,6 +12,17 @@ describe('LodgingsPublicController', () => {
     findPublicById: jest.fn(),
   };
 
+  const mockMediaUrlBuilder = {
+    buildPublicUrl: jest
+      .fn()
+      .mockImplementation((value: string) => `https://media.test/${value}`),
+    buildLodgingVariants: jest.fn().mockImplementation((value: string) => ({
+      thumb: `https://media.test/thumb/${value}`,
+      card: `https://media.test/card/${value}`,
+      hero: `https://media.test/hero/${value}`,
+    })),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LodgingsPublicController],
@@ -18,6 +30,10 @@ describe('LodgingsPublicController', () => {
         {
           provide: LodgingsService,
           useValue: mockLodgingsService,
+        },
+        {
+          provide: MEDIA_URL_BUILDER,
+          useValue: mockMediaUrlBuilder,
         },
       ],
     }).compile();
@@ -43,6 +59,8 @@ describe('LodgingsPublicController', () => {
           {
             _id: '1',
             title: 'Cabaña Mar Azul',
+            mainImage: 'lodgings/1/original.webp',
+            images: ['lodgings/1/original.webp'],
           },
         ],
         total: 1,
@@ -76,8 +94,8 @@ describe('LodgingsPublicController', () => {
             minNights: undefined,
             distanceToBeach: undefined,
             amenities: undefined,
-            mainImage: undefined,
-            images: undefined,
+            mainImage: 'https://media.test/lodgings/1/original.webp',
+            images: ['https://media.test/lodgings/1/original.webp'],
           },
         ],
       });
@@ -91,6 +109,8 @@ describe('LodgingsPublicController', () => {
       const mockLodging = {
         _id: id,
         title: 'Cabaña Mar Azul',
+        mainImage: 'lodgings/123/original.webp',
+        images: ['lodgings/123/original.webp'],
       };
 
       mockLodgingsService.findPublicById.mockResolvedValue(mockLodging);
@@ -114,8 +134,8 @@ describe('LodgingsPublicController', () => {
         minNights: undefined,
         distanceToBeach: undefined,
         amenities: undefined,
-        mainImage: undefined,
-        images: undefined,
+        mainImage: 'https://media.test/lodgings/123/original.webp',
+        images: ['https://media.test/lodgings/123/original.webp'],
       });
     });
   });

@@ -27,4 +27,35 @@ describe('CloudflareMediaUrlBuilderService', () => {
     expect(variants.hero).toContain('/cdn-cgi/image/');
     expect(variants.thumb).toContain('lodgings/abc/original.webp');
   });
+
+  it('debe devolver variantes sin /cdn-cgi/image cuando MEDIA_PUBLIC_BASE_URL es r2.dev', () => {
+    const configService = {
+      get: jest.fn().mockReturnValue('https://modo-playa-media.r2.dev'),
+    } as unknown as ConfigService;
+
+    const service = new CloudflareMediaUrlBuilderService(configService);
+    const variants = service.buildLodgingVariants('lodgings/abc/original.webp');
+
+    expect(variants).toEqual({
+      thumb: 'https://modo-playa-media.r2.dev/lodgings/abc/original.webp',
+      card: 'https://modo-playa-media.r2.dev/lodgings/abc/original.webp',
+      hero: 'https://modo-playa-media.r2.dev/lodgings/abc/original.webp',
+    });
+  });
+
+  it('debe evitar doble concatenación cuando recibe una URL absoluta', () => {
+    const configService = {
+      get: jest.fn().mockReturnValue('https://media.example.com'),
+    } as unknown as ConfigService;
+
+    const service = new CloudflareMediaUrlBuilderService(configService);
+    const url = 'https://cdn.example.org/lodgings/abc/original.webp';
+
+    expect(service.buildPublicUrl(url)).toBe(url);
+    expect(service.buildLodgingVariants(url)).toEqual({
+      thumb: url,
+      card: url,
+      hero: url,
+    });
+  });
 });
