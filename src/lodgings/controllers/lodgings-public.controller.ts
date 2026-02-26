@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -17,11 +17,17 @@ import {
 } from '../swagger/lodgings-public.swagger';
 import { LodgingMapper } from '@lodgings/mappers/lodgings.mapper';
 import { LodgingResponseDto } from '@lodgings/dto/lodging-response.dto';
+import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
+import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
 
 @ApiTags('Public - Lodgings')
 @Controller('lodgings')
 export class LodgingsPublicController {
-  constructor(private readonly lodgingsService: LodgingsService) {}
+  constructor(
+    private readonly lodgingsService: LodgingsService,
+    @Inject(MEDIA_URL_BUILDER)
+    private readonly mediaUrlBuilder: MediaUrlBuilder,
+  ) {}
 
   @ApiOperation({
     summary: 'Listar alojamientos públicos',
@@ -66,7 +72,9 @@ export class LodgingsPublicController {
 
     return {
       ...result,
-      data: result.data.map((lodging) => LodgingMapper.toResponse(lodging)),
+      data: result.data.map((lodging) =>
+        LodgingMapper.toResponse(lodging, this.mediaUrlBuilder),
+      ),
     };
   }
 
@@ -92,6 +100,6 @@ export class LodgingsPublicController {
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<LodgingResponseDto> {
     const lodging = await this.lodgingsService.findPublicById(id);
-    return LodgingMapper.toResponse(lodging);
+    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 }

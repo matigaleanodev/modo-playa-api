@@ -8,19 +8,44 @@ import type {
 @Injectable()
 export class CloudflareMediaUrlBuilderService implements MediaUrlBuilder {
   private readonly baseUrl: string;
+  private readonly supportsCloudflareImageResizing: boolean;
 
   constructor(private readonly configService: ConfigService) {
     const configured =
       this.configService.get<string>('MEDIA_PUBLIC_BASE_URL') ?? '';
 
     this.baseUrl = configured.replace(/\/+$/, '');
+    this.supportsCloudflareImageResizing =
+      this.detectCloudflareImageResizingSupport(this.baseUrl);
   }
 
   buildPublicUrl(key: string): string {
+    if (this.isAbsoluteUrl(key)) {
+      return key;
+    }
+
     return `${this.baseUrl}/${this.normalizeKey(key)}`;
   }
 
   buildLodgingVariants(key: string): MediaUrlVariants {
+    if (this.isAbsoluteUrl(key)) {
+      return {
+        thumb: key,
+        card: key,
+        hero: key,
+      };
+    }
+
+    if (!this.supportsCloudflareImageResizing) {
+      const originalUrl = this.buildPublicUrl(key);
+
+      return {
+        thumb: originalUrl,
+        card: originalUrl,
+        hero: originalUrl,
+      };
+    }
+
     const normalizedKey = this.normalizeKey(key);
 
     return {
@@ -52,5 +77,24 @@ export class CloudflareMediaUrlBuilderService implements MediaUrlBuilder {
       .filter((segment) => segment.length > 0)
       .map((segment) => encodeURIComponent(segment))
       .join('/');
+  }
+
+  private isAbsoluteUrl(value: string): boolean {
+    return /^https?:\/\//i.test(value);
+  }
+
+  private detectCloudflareImageResizingSupport(baseUrl: string): boolean {
+    try {
+      const hostname = new URL(baseUrl).hostname.toLowerCase();
+
+      // r2.dev serves public objects, but does not support /cdn-cgi/image resizing paths.
+      if (hostname.endsWith('.r2.dev')) {
+        return false;
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

@@ -6,6 +6,7 @@ import { UpdateLodgingDto } from '../dto/update-lodging.dto';
 import { AdminLodgingsQueryDto } from '@lodgings/dto/pagination-query.dto';
 import { Request } from 'express';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
+import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
 
 describe('LodgingsAdminController', () => {
   let controller: LodgingsAdminController;
@@ -29,6 +30,17 @@ describe('LodgingsAdminController', () => {
     user: mockUser,
   } as Request & { user: RequestUser };
 
+  const mockMediaUrlBuilder = {
+    buildPublicUrl: jest
+      .fn()
+      .mockImplementation((value: string) => `https://media.test/${value}`),
+    buildLodgingVariants: jest.fn().mockImplementation((value: string) => ({
+      thumb: `https://media.test/thumb/${value}`,
+      card: `https://media.test/card/${value}`,
+      hero: `https://media.test/hero/${value}`,
+    })),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LodgingsAdminController],
@@ -36,6 +48,10 @@ describe('LodgingsAdminController', () => {
         {
           provide: LodgingsService,
           useValue: mockService,
+        },
+        {
+          provide: MEDIA_URL_BUILDER,
+          useValue: mockMediaUrlBuilder,
         },
       ],
     }).compile();
@@ -53,6 +69,8 @@ describe('LodgingsAdminController', () => {
     mockService.create.mockResolvedValue({
       _id: '1',
       title: 'Test',
+      mainImage: 'lodgings/a/original.webp',
+      images: ['lodgings/a/original.webp'],
     });
 
     const result = await controller.create(dto, mockRequest);
@@ -61,6 +79,12 @@ describe('LodgingsAdminController', () => {
 
     expect(result.id).toBe('1');
     expect(result.title).toBe('Test');
+    expect(result.mainImage).toBe(
+      'https://media.test/lodgings/a/original.webp',
+    );
+    expect(result.images).toEqual([
+      'https://media.test/lodgings/a/original.webp',
+    ]);
   });
 
   it('debe llamar a findAdminPaginated con ownerId y role', async () => {
