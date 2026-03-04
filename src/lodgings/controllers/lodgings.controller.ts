@@ -24,6 +24,7 @@ import {
 import { LodgingsService } from '../lodgings.service';
 import { CreateLodgingDto } from '../dto/create-lodging.dto';
 import { UpdateLodgingDto } from '../dto/update-lodging.dto';
+import { AvailabilityRangeDto } from '../dto/availability-range.dto';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { AdminLodgingsQueryDto } from '@lodgings/dto/pagination-query.dto';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
@@ -168,6 +169,89 @@ export class LodgingsAdminController {
     );
 
     return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
+  }
+
+  @ApiOperation({
+    summary: 'Obtener rangos ocupados del alojamiento',
+    description: 'Devuelve los rangos ocupados (availability) del alojamiento.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'ID del alojamiento',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Rangos ocupados encontrados',
+    type: [AvailabilityRangeDto],
+  })
+  @Get(':id/occupied-ranges')
+  getOccupiedRanges(
+    @Param('id') id: string,
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<AvailabilityRangeDto[]> {
+    return this.lodgingsService.getOccupiedRanges(
+      id,
+      req.user.ownerId,
+      req.user.role,
+    );
+  }
+
+  @ApiOperation({
+    summary: 'Agregar rango ocupado',
+    description:
+      'Agrega un rango ocupado normalizado a inicio del día y valida conflictos.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'ID del alojamiento',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Rango ocupado agregado',
+    type: [AvailabilityRangeDto],
+  })
+  @Post(':id/occupied-ranges')
+  addOccupiedRange(
+    @Param('id') id: string,
+    @Body() dto: AvailabilityRangeDto,
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<AvailabilityRangeDto[]> {
+    return this.lodgingsService.addOccupiedRange(
+      id,
+      dto,
+      req.user.ownerId,
+      req.user.role,
+    );
+  }
+
+  @ApiOperation({
+    summary: 'Eliminar rango ocupado',
+    description: 'Elimina un rango ocupado exacto del alojamiento.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'ID del alojamiento',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Rango ocupado eliminado',
+    type: [AvailabilityRangeDto],
+  })
+  @Delete(':id/occupied-ranges')
+  removeOccupiedRange(
+    @Param('id') id: string,
+    @Body() dto: AvailabilityRangeDto,
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<AvailabilityRangeDto[]> {
+    return this.lodgingsService.removeOccupiedRange(
+      id,
+      dto,
+      req.user.ownerId,
+      req.user.role,
+    );
   }
 
   @ApiOperation({
