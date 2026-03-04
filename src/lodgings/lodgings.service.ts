@@ -247,6 +247,14 @@ export class LodgingsService {
     ownerId: string,
     role: UserRole,
   ): Promise<LodgingDocument> {
+    if (Object.prototype.hasOwnProperty.call(dto as object, 'occupiedRanges')) {
+      throw new DomainException(
+        'occupiedRanges must be managed using availability endpoints',
+        ERROR_CODES.INVALID_AVAILABILITY_RANGE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
       errorCode: ERROR_CODES.INVALID_OBJECT_ID,
@@ -257,10 +265,6 @@ export class LodgingsService {
       errorCode: ERROR_CODES.INVALID_OBJECT_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
-
-    if (dto.occupiedRanges) {
-      this.validateRanges(dto.occupiedRanges);
-    }
 
     if (dto.contactId) {
       if (!Types.ObjectId.isValid(dto.contactId)) {
@@ -346,20 +350,159 @@ export class LodgingsService {
     return { deleted: true };
   }
 
+  async getOccupiedRanges(
+    id: string,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<AvailabilityRangeDto[]> {
+    const lodging = await this.findAdminById(id, ownerId, role);
+
+    return this.toAvailabilityRangeDtos(lodging.occupiedRanges);
+  }
+
+  async addOccupiedRange(
+    id: string,
+    range: AvailabilityRangeDto,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<AvailabilityRangeDto[]> {
+    const lodging = await this.findAdminById(id, ownerId, role);
+    const normalizedNewRange = this.normalizeAndValidateRange(range);
+
+    this.ensureNoRangeConflicts(normalizedNewRange, lodging.occupiedRanges ?? []);
+
+    lodging.occupiedRanges = [
+      ...(lodging.occupiedRanges ?? []),
+      normalizedNewRange,
+    ].sort((a, b) => a.from.getTime() - b.from.getTime());
+
+    await lodging.save();
+
+    return this.toAvailabilityRangeDtos(lodging.occupiedRanges);
+  }
+
+  async removeOccupiedRange(
+    id: string,
+    range: AvailabilityRangeDto,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<AvailabilityRangeDto[]> {
+    const lodging = await this.findAdminById(id, ownerId, role);
+    const normalizedTarget = this.normalizeAndValidateRange(range);
+    const beforeCount = lodging.occupiedRanges?.length ?? 0;
+
+    lodging.occupiedRanges = (lodging.occupiedRanges ?? []).filter(
+      (existingRange) => {
+        const normalizedExisting = this.normalizeRangeDates(existingRange);
+        return !(
+          normalizedExisting.from.getTime() ===
+            normalizedTarget.from.getTime() &&
+          normalizedExisting.to.getTime() === normalizedTarget.to.getTime()
+        );
+      },
+    );
+
+    if ((lodging.occupiedRanges?.length ?? 0) === beforeCount) {
+      throw new DomainException(
+        'Occupied range not found',
+        ERROR_CODES.INVALID_AVAILABILITY_RANGE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await lodging.save();
+
+    return this.toAvailabilityRangeDtos(lodging.occupiedRanges);
+  }
+
   private validateRanges(ranges?: AvailabilityRangeDto[]) {
     if (!ranges) return;
 
-    for (const range of ranges) {
-      const from = new Date(range.from);
-      const to = new Date(range.to);
+    const normalizedRanges = ranges.map((range) =>
+      this.normalizeAndValidateRange(range),
+    );
 
-      if (from > to) {
+    for (let i = 0; i < normalizedRanges.length; i += 1) {
+      for (let j = i + 1; j < normalizedRanges.length; j += 1) {
+        if (this.isOverlappingRange(normalizedRanges[i], normalizedRanges[j])) {
+          throw new DomainException(
+            'Invalid availability range: overlapping ranges are not allowed',
+            ERROR_CODES.OCCUPIED_RANGE_CONFLICT,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+    }
+  }
+
+  private ensureNoRangeConflicts(
+    newRange: { from: Date; to: Date },
+    existingRanges: { from: Date; to: Date }[],
+  ) {
+    for (const existingRange of existingRanges) {
+      const normalizedExistingRange = this.normalizeRangeDates(existingRange);
+
+      if (this.isOverlappingRange(newRange, normalizedExistingRange)) {
         throw new DomainException(
-          'Invalid availability range: from must be before or equal to to',
-          ERROR_CODES.INVALID_AVAILABILITY_RANGE,
+          'Occupied range overlaps with existing availability',
+          ERROR_CODES.OCCUPIED_RANGE_CONFLICT,
           HttpStatus.BAD_REQUEST,
         );
       }
     }
+  }
+
+  private isOverlappingRange(
+    first: { from: Date; to: Date },
+    second: { from: Date; to: Date },
+  ): boolean {
+    return first.from <= second.to && first.to >= second.from;
+  }
+
+  private normalizeAndValidateRange(range: AvailabilityRangeDto): {
+    from: Date;
+    to: Date;
+  } {
+    const normalizedRange = this.normalizeRangeDates(range);
+
+    if (normalizedRange.from > normalizedRange.to) {
+      throw new DomainException(
+        'Invalid availability range: from must be before or equal to to',
+        ERROR_CODES.INVALID_AVAILABILITY_RANGE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return normalizedRange;
+  }
+
+  private normalizeRangeDates(range: {
+    from: Date | string;
+    to: Date | string;
+  }): { from: Date; to: Date } {
+    return {
+      from: this.normalizeToUtcStartOfDay(range.from),
+      to: this.normalizeToUtcStartOfDay(range.to),
+    };
+  }
+
+  private normalizeToUtcStartOfDay(value: Date | string): Date {
+    const date = new Date(value);
+
+    return new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+  }
+
+  private toAvailabilityRangeDtos(
+    ranges: { from: Date; to: Date }[],
+  ): AvailabilityRangeDto[] {
+    return (ranges ?? []).map((range) => {
+      const normalizedRange = this.normalizeRangeDates(range);
+      return {
+        from: normalizedRange.from.toISOString().slice(0, 10),
+        to: normalizedRange.to.toISOString().slice(0, 10),
+      };
+    });
   }
 }

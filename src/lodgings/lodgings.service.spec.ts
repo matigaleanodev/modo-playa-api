@@ -119,6 +119,175 @@ describe('LodgingsService', () => {
         service.update('invalid-id', {}, ownerId, 'OWNER'),
       ).rejects.toThrow(DomainException);
     });
+
+    it('debe rechazar occupiedRanges en patch general', async () => {
+      await expect(
+        service.update(
+          lodgingId,
+          { occupiedRanges: [{ from: '2026-01-10', to: '2026-01-11' }] } as any,
+          ownerId,
+          'OWNER',
+        ),
+      ).rejects.toThrow(DomainException);
+    });
+  });
+
+  describe('occupiedRanges availability', () => {
+    it('debe devolver occupiedRanges normalizados', async () => {
+      mockLodgingModel.findOne.mockResolvedValue({
+        occupiedRanges: [
+          {
+            from: new Date('2026-01-10T15:30:00.000Z'),
+            to: new Date('2026-01-15T23:59:00.000Z'),
+          },
+        ],
+      });
+
+      const result = await service.getOccupiedRanges(lodgingId, ownerId, 'OWNER');
+
+      expect(result).toEqual([{ from: '2026-01-10', to: '2026-01-15' }]);
+    });
+
+    it('debe agregar occupiedRange sin conflicto', async () => {
+      const mockSave = jest.fn().mockResolvedValue(true);
+      const lodging = {
+        occupiedRanges: [
+          { from: new Date('2026-01-01'), to: new Date('2026-01-03') },
+        ],
+        save: mockSave,
+      };
+      mockLodgingModel.findOne.mockResolvedValue(lodging);
+
+      const result = await service.addOccupiedRange(
+        lodgingId,
+        { from: '2026-01-10', to: '2026-01-15' },
+        ownerId,
+        'OWNER',
+      );
+
+      expect(mockSave).toHaveBeenCalled();
+      expect(result).toEqual([
+        { from: '2026-01-01', to: '2026-01-03' },
+        { from: '2026-01-10', to: '2026-01-15' },
+      ]);
+    });
+
+    it('debe normalizar fechas al agregar occupiedRange', async () => {
+      const mockSave = jest.fn().mockResolvedValue(true);
+      const lodging = {
+        occupiedRanges: [],
+        save: mockSave,
+      };
+      mockLodgingModel.findOne.mockResolvedValue(lodging);
+
+      const result = await service.addOccupiedRange(
+        lodgingId,
+        {
+          from: '2026-01-10T22:20:00.000Z',
+          to: '2026-01-11T05:10:00.000Z',
+        },
+        ownerId,
+        'OWNER',
+      );
+
+      expect(mockSave).toHaveBeenCalled();
+      expect(lodging.occupiedRanges).toEqual([
+        {
+          from: new Date('2026-01-10T00:00:00.000Z'),
+          to: new Date('2026-01-11T00:00:00.000Z'),
+        },
+      ]);
+      expect(result).toEqual([{ from: '2026-01-10', to: '2026-01-11' }]);
+    });
+
+    it('debe rechazar occupiedRange con conflicto', async () => {
+      mockLodgingModel.findOne.mockResolvedValue({
+        occupiedRanges: [
+          { from: new Date('2026-01-10'), to: new Date('2026-01-15') },
+        ],
+      });
+
+      await expect(
+        service.addOccupiedRange(
+          lodgingId,
+          { from: '2026-01-14', to: '2026-01-20' },
+          ownerId,
+          'OWNER',
+        ),
+      ).rejects.toThrow(DomainException);
+    });
+
+    it('debe rechazar occupiedRange con conflicto en bordes inclusivos', async () => {
+      mockLodgingModel.findOne.mockResolvedValue({
+        occupiedRanges: [
+          { from: new Date('2026-01-10'), to: new Date('2026-01-15') },
+        ],
+      });
+
+      await expect(
+        service.addOccupiedRange(
+          lodgingId,
+          { from: '2026-01-15', to: '2026-01-20' },
+          ownerId,
+          'OWNER',
+        ),
+      ).rejects.toThrow(DomainException);
+    });
+
+    it('debe rechazar occupiedRange con from mayor que to', async () => {
+      mockLodgingModel.findOne.mockResolvedValue({
+        occupiedRanges: [],
+      });
+
+      await expect(
+        service.addOccupiedRange(
+          lodgingId,
+          { from: '2026-01-20', to: '2026-01-10' },
+          ownerId,
+          'OWNER',
+        ),
+      ).rejects.toThrow(DomainException);
+    });
+
+    it('debe eliminar occupiedRange existente', async () => {
+      const mockSave = jest.fn().mockResolvedValue(true);
+      const lodging = {
+        occupiedRanges: [
+          { from: new Date('2026-01-10'), to: new Date('2026-01-15') },
+          { from: new Date('2026-01-20'), to: new Date('2026-01-22') },
+        ],
+        save: mockSave,
+      };
+      mockLodgingModel.findOne.mockResolvedValue(lodging);
+
+      const result = await service.removeOccupiedRange(
+        lodgingId,
+        { from: '2026-01-10', to: '2026-01-15' },
+        ownerId,
+        'OWNER',
+      );
+
+      expect(mockSave).toHaveBeenCalled();
+      expect(result).toEqual([{ from: '2026-01-20', to: '2026-01-22' }]);
+    });
+
+    it('debe rechazar eliminación de occupiedRange inexistente', async () => {
+      mockLodgingModel.findOne.mockResolvedValue({
+        occupiedRanges: [
+          { from: new Date('2026-01-20'), to: new Date('2026-01-22') },
+        ],
+        save: jest.fn(),
+      });
+
+      await expect(
+        service.removeOccupiedRange(
+          lodgingId,
+          { from: '2026-01-10', to: '2026-01-15' },
+          ownerId,
+          'OWNER',
+        ),
+      ).rejects.toThrow(DomainException);
+    });
   });
 
   describe('remove', () => {

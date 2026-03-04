@@ -16,6 +16,9 @@ describe('LodgingsAdminController', () => {
     findAdminPaginated: jest.fn(),
     findAdminById: jest.fn(),
     update: jest.fn(),
+    getOccupiedRanges: jest.fn(),
+    addOccupiedRange: jest.fn(),
+    removeOccupiedRange: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -158,5 +161,51 @@ describe('LodgingsAdminController', () => {
     );
 
     expect(result).toEqual({ deleted: true });
+  });
+
+  it('debe listar occupiedRanges con ownerId y role', async () => {
+    const ranges = [{ from: '2026-01-10', to: '2026-01-15' }];
+    mockService.getOccupiedRanges.mockResolvedValue(ranges);
+
+    const result = await controller.getOccupiedRanges('1', mockRequest);
+
+    expect(mockService.getOccupiedRanges).toHaveBeenCalledWith(
+      '1',
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result).toEqual(ranges);
+  });
+
+  it('debe agregar occupiedRange con ownerId y role', async () => {
+    const dto = { from: '2026-01-10', to: '2026-01-15' };
+    const ranges = [dto];
+    mockService.addOccupiedRange.mockResolvedValue(ranges);
+
+    const result = await controller.addOccupiedRange('1', dto, mockRequest);
+
+    expect(mockService.addOccupiedRange).toHaveBeenCalledWith(
+      '1',
+      dto,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result).toEqual(ranges);
+  });
+
+  it('debe eliminar occupiedRange con ownerId y role', async () => {
+    const dto = { from: '2026-01-10', to: '2026-01-15' };
+    const ranges: typeof dto[] = [];
+    mockService.removeOccupiedRange.mockResolvedValue(ranges);
+
+    const result = await controller.removeOccupiedRange('1', dto, mockRequest);
+
+    expect(mockService.removeOccupiedRange).toHaveBeenCalledWith(
+      '1',
+      dto,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result).toEqual(ranges);
   });
 });
