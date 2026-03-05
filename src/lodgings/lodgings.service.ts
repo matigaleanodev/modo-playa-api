@@ -19,6 +19,11 @@ import { escapeRegex } from '@common/utils/regex.util';
 
 @Injectable()
 export class LodgingsService {
+  private readonly contactPopulate = {
+    path: 'contactId',
+    select: 'name email whatsapp isDefault active notes',
+  } as const;
+
   constructor(
     @InjectModel(Lodging.name)
     private readonly lodgingModel: Model<LodgingDocument>,
@@ -80,8 +85,9 @@ export class LodgingsService {
       ownerId: ownerObjectId,
       contactId,
     });
-
-    return lodging.save();
+    const saved = await lodging.save();
+    await saved.populate(this.contactPopulate);
+    return saved;
   }
 
   async findPublicPaginated(
@@ -138,6 +144,7 @@ export class LodgingsService {
     const [data, total] = await Promise.all([
       this.lodgingModel
         .find(filters)
+        .populate(this.contactPopulate)
         .skip((page - 1) * limit)
         .limit(limit)
         .sort({ createdAt: -1 }),
@@ -160,7 +167,7 @@ export class LodgingsService {
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
       active: true,
-    });
+    }).populate(this.contactPopulate);
 
     if (!lodging) {
       throw new DomainException(
@@ -198,6 +205,7 @@ export class LodgingsService {
     const [data, total] = await Promise.all([
       this.lodgingModel
         .find(filters)
+        .populate(this.contactPopulate)
         .skip((page - 1) * limit)
         .limit(limit)
         .sort({ createdAt: -1 }),
@@ -228,7 +236,9 @@ export class LodgingsService {
       });
     }
 
-    const lodging = await this.lodgingModel.findOne(filters);
+    const lodging = await this.lodgingModel
+      .findOne(filters)
+      .populate(this.contactPopulate);
 
     if (!lodging) {
       throw new DomainException(
@@ -297,10 +307,12 @@ export class LodgingsService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = ownerObjectId;
     }
-    const lodging = await this.lodgingModel.findOneAndUpdate(filters, dto, {
-      returnDocument: 'after',
-      runValidators: true,
-    });
+    const lodging = await this.lodgingModel
+      .findOneAndUpdate(filters, dto, {
+        returnDocument: 'after',
+        runValidators: true,
+      })
+      .populate(this.contactPopulate);
 
     if (!lodging) {
       throw new DomainException(

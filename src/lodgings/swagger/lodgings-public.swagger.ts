@@ -37,6 +37,16 @@ export const PUBLIC_LODGING_RESPONSE_EXAMPLE = {
       },
     },
   ],
+  contactId: '699c9b30436edbee48110155',
+  contact: {
+    id: '699c9b30436edbee48110155',
+    name: 'Contacto principal',
+    email: 'contacto@modo-playa.com',
+    whatsapp: '+5492215550101',
+    isDefault: true,
+    active: true,
+    notes: 'Disponible de 9 a 20 hs',
+  },
 };
 
 export const PUBLIC_PAGINATED_RESPONSE_EXAMPLE = {

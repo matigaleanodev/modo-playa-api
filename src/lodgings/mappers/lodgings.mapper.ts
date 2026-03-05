@@ -2,12 +2,14 @@ import { LodgingDocument } from '../schemas/lodging.schema';
 import { LodgingResponseDto } from '../dto/lodging-response.dto';
 import { LodgingImageResponseDto } from '@lodgings/dto/lodging-image-response.dto';
 import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
+import { ContactResponseDto } from '@contacts/dto/contact-response.dto';
 
 export class LodgingMapper {
   static toResponse(
     lodging: LodgingDocument,
     mediaUrlBuilder?: MediaUrlBuilder,
   ): LodgingResponseDto {
+    const { contactId, contact } = LodgingMapper.toContactResponse(lodging);
     const mediaImages = Array.isArray(lodging.mediaImages)
       ? lodging.mediaImages.map<LodgingImageResponseDto>((image) => ({
           imageId: image.imageId,
@@ -55,6 +57,8 @@ export class LodgingMapper {
       mainImage: derivedMainImage ?? '',
       images: normalizedImages,
       mediaImages,
+      contactId,
+      contact,
     };
   }
 
@@ -67,5 +71,58 @@ export class LodgingMapper {
     }
 
     return mediaUrlBuilder ? mediaUrlBuilder.buildPublicUrl(value) : value;
+  }
+
+  private static toContactResponse(lodging: LodgingDocument): {
+    contactId?: string;
+    contact?: ContactResponseDto;
+  } {
+    const rawContact = lodging.contactId as unknown;
+
+    if (!rawContact) {
+      return {};
+    }
+
+    if (typeof rawContact === 'string') {
+      return { contactId: rawContact };
+    }
+
+    const asObj = rawContact as {
+      toString?: () => string;
+      _id?: { toString?: () => string } | string;
+      name?: string;
+      email?: string;
+      whatsapp?: string;
+      isDefault?: boolean;
+      active?: boolean;
+      notes?: string;
+    };
+
+    const idFromNested =
+      typeof asObj._id === 'string'
+        ? asObj._id
+        : asObj._id?.toString?.();
+    const id = idFromNested ?? asObj.toString?.();
+
+    if (!id) {
+      return {};
+    }
+
+    if (!asObj.name) {
+      return { contactId: id };
+    }
+
+    return {
+      contactId: id,
+      contact: {
+        id,
+        name: asObj.name,
+        email: asObj.email,
+        whatsapp: asObj.whatsapp,
+        isDefault: !!asObj.isDefault,
+        active: asObj.active ?? true,
+        notes: asObj.notes,
+      },
+    };
   }
 }
