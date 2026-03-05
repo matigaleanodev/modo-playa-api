@@ -5,6 +5,7 @@ import { Lodging } from './schemas/lodging.schema';
 import { Contact } from '@contacts/schemas/contact.schema';
 import { DomainException } from '@common/exceptions/domain.exception';
 import { Types } from 'mongoose';
+import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
 
 describe('LodgingsService', () => {
   let service: LodgingsService;
@@ -23,6 +24,10 @@ describe('LodgingsService', () => {
     findOne: jest.fn(),
   };
 
+  const mockLodgingImagesService = {
+    attachUploadedFiles: jest.fn(),
+  };
+
   beforeEach(async () => {
     ownerId = new Types.ObjectId().toString();
     lodgingId = new Types.ObjectId().toString();
@@ -37,6 +42,10 @@ describe('LodgingsService', () => {
         {
           provide: getModelToken(Contact.name),
           useValue: mockContactModel,
+        },
+        {
+          provide: LodgingImagesService,
+          useValue: mockLodgingImagesService,
         },
       ],
     }).compile();

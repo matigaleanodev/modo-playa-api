@@ -13,6 +13,7 @@ describe('LodgingsAdminController', () => {
 
   const mockService = {
     create: jest.fn(),
+    createWithImages: jest.fn(),
     findAdminPaginated: jest.fn(),
     findAdminById: jest.fn(),
     update: jest.fn(),
@@ -88,6 +89,45 @@ describe('LodgingsAdminController', () => {
     expect(result.images).toEqual([
       'https://media.test/lodgings/a/original.webp',
     ]);
+  });
+
+  it('debe llamar a createWithImages con payload parseado, imágenes y owner/role', async () => {
+    const body = {
+      payload: JSON.stringify({
+        title: 'Test',
+        description: 'Desc',
+        location: 'Loc',
+        city: 'City',
+        type: 'house',
+        price: 100,
+        priceUnit: 'night',
+        maxGuests: 4,
+        bedrooms: 2,
+        bathrooms: 1,
+        minNights: 2,
+      }),
+    };
+    const files = [{ buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 }];
+
+    mockService.createWithImages.mockResolvedValue({
+      _id: '1',
+      title: 'Test',
+      mainImage: 'lodgings/a/original.webp',
+      images: [],
+      mediaImages: [],
+    });
+
+    const result = await controller.createWithImages(body, files, mockRequest);
+
+    expect(mockService.createWithImages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Test',
+      }),
+      files,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result.id).toBe('1');
   });
 
   it('debe llamar a findAdminPaginated con ownerId y role', async () => {
