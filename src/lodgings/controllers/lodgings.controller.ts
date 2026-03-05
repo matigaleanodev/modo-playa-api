@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Inject,
@@ -10,19 +11,30 @@ import {
   Query,
   UseGuards,
   Req,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBody,
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiQuery,
   ApiParam,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
 
 import { LodgingsService } from '../lodgings.service';
 import { CreateLodgingDto } from '../dto/create-lodging.dto';
+import {
+  CreateLodgingMultipartBodyDto,
+  CreateLodgingWithImagesDto,
+} from '../dto/create-lodging-with-images.dto';
 import { UpdateLodgingDto } from '../dto/update-lodging.dto';
 import { AvailabilityRangeDto } from '../dto/availability-range.dto';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
@@ -66,6 +78,52 @@ export class LodgingsAdminController {
     @Req() req: Request & { user: RequestUser },
   ): Promise<LodgingResponseDto> {
     const lodging = await this.lodgingsService.create(dto, req.user.ownerId);
+
+    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
+  }
+
+  @ApiOperation({
+    summary: 'Crear alojamiento con imágenes (flujo unificado)',
+    description:
+      'Crea un alojamiento y procesa imágenes en una sola transacción backend usando multipart/form-data.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['payload'],
+      properties: {
+        payload: {
+          type: 'string',
+          description: 'JSON serializado con el CreateLodgingWithImagesDto',
+        },
+        images: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Alojamiento creado correctamente con imágenes procesadas',
+    schema: { example: LODGING_RESPONSE_EXAMPLE },
+  })
+  @Post('with-images')
+  @UseInterceptors(FilesInterceptor('images', 5))
+  async createWithImages(
+    @Body() body: CreateLodgingMultipartBodyDto,
+    @UploadedFiles()
+    files: Array<{ buffer: Buffer; mimetype: string; size: number }>,
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<LodgingResponseDto> {
+    const dto = this.parseMultipartPayload(body.payload);
+    const lodging = await this.lodgingsService.createWithImages(
+      dto,
+      files,
+      req.user.ownerId,
+      req.user.role,
+    );
 
     return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
@@ -275,5 +333,26 @@ export class LodgingsAdminController {
     @Req() req: Request & { user: RequestUser },
   ): Promise<{ deleted: boolean }> {
     return this.lodgingsService.remove(id, req.user.ownerId, req.user.role);
+  }
+
+  private parseMultipartPayload(payload: string): CreateLodgingWithImagesDto {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(payload);
+    } catch {
+      throw new BadRequestException('Invalid payload JSON');
+    }
+
+    const dto = plainToInstance(CreateLodgingWithImagesDto, parsed);
+    const errors = validateSync(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+
+    return dto;
   }
 }

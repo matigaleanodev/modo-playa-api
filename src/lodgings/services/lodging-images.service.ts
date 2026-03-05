@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, QueryFilter } from 'mongoose';
 import { randomUUID } from 'crypto';
-import { PassThrough } from 'stream';
+import { PassThrough, Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { UserRole } from '@common/interfaces/role.interface';
 import { toObjectIdOrThrow } from '@common/utils/object-id.util';
@@ -28,6 +28,12 @@ import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interf
 import { LodgingImage } from '@lodgings/schemas/lodging-image.schema';
 import { PendingLodgingImageUpload } from '@lodgings/schemas/pending-lodging-image-upload.schema';
 import { LodgingImageResponseDto } from '@lodgings/dto/lodging-image-response.dto';
+
+type UploadedLodgingImageFile = {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+};
 
 @Injectable()
 export class LodgingImagesService {
@@ -366,6 +372,96 @@ export class LodgingImagesService {
       deleted: true,
       images: images.map((image) => this.toLodgingImageResponse(image)),
     };
+  }
+
+  async attachUploadedFiles(
+    lodgingId: string,
+    files: UploadedLodgingImageFile[],
+    ownerId: string,
+    role: UserRole,
+  ): Promise<void> {
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const lodging = await this.findOwnedLodgingOrThrow(lodgingId, ownerId, role);
+    const existingImages = this.getLodgingImages(lodging);
+    this.policy.assertCanReserveSlot(existingImages.length, 0);
+
+    if (existingImages.length + files.length > this.policy.MAX_IMAGES) {
+      throw new DomainException(
+        'Lodging image limit exceeded',
+        ERROR_CODES.LODGING_IMAGE_LIMIT_EXCEEDED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const uploadedKeys: string[] = [];
+    const uploadedImages: LodgingImage[] = [];
+
+    try {
+      for (const file of files) {
+        this.assertAllowedMime(file.mimetype);
+        this.assertSizeWithinLimit(file.size, this.getLodgingMaxBytes());
+
+        const imageId = randomUUID();
+        const finalKey = this.buildFinalKey(lodgingId, imageId);
+        const handle = this.imageProcessor.createLodgingNormalizerTransform({
+          maxWidth: this.getLodgingMaxWidth(),
+          maxHeight: this.getLodgingMaxHeight(),
+          outputFormat: 'webp',
+        });
+        const output = new PassThrough();
+
+        const uploadPromise = this.storage.putObject({
+          key: finalKey,
+          body: output,
+          contentType: 'image/webp',
+          cacheControl: 'public, max-age=31536000, immutable',
+        });
+
+        await Promise.all([
+          uploadPromise,
+          pipeline(
+            Readable.from(file.buffer) as NodeJS.ReadableStream,
+            handle.transform as NodeJS.WritableStream,
+            output,
+          ),
+        ]);
+
+        const metadata = await handle.getMetadata();
+        uploadedKeys.push(finalKey);
+        uploadedImages.push({
+          imageId,
+          key: finalKey,
+          isDefault: false,
+          width: metadata.width,
+          height: metadata.height,
+          bytes: metadata.bytes,
+          mime: metadata.mime,
+          createdAt: new Date(),
+        });
+      }
+    } catch (error) {
+      for (const key of uploadedKeys) {
+        try {
+          await this.storage.deleteObject(key);
+        } catch {
+          // best effort cleanup
+        }
+      }
+      throw error;
+    }
+
+    const hadDefault = existingImages.some((image) => image.isDefault);
+    lodging.mediaImages = [...existingImages, ...uploadedImages];
+
+    if (!hadDefault && lodging.mediaImages.length > 0) {
+      lodging.mediaImages[0].isDefault = true;
+    }
+
+    this.policy.assertValidImagesState(lodging.mediaImages);
+    await lodging.save();
   }
 
   private async findOwnedLodgingOrThrow(

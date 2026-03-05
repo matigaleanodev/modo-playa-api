@@ -16,6 +16,8 @@ import { PaginatedResponse } from '@common/interfaces/pagination-response.interf
 import { UserRole } from '@common/interfaces/role.interface';
 import { toObjectIdOrThrow } from '@common/utils/object-id.util';
 import { escapeRegex } from '@common/utils/regex.util';
+import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
+import { CreateLodgingWithImagesDto } from '@lodgings/dto/create-lodging-with-images.dto';
 
 @Injectable()
 export class LodgingsService {
@@ -30,6 +32,7 @@ export class LodgingsService {
 
     @InjectModel(Contact.name)
     private readonly contactModel: Model<ContactDocument>,
+    private readonly lodgingImagesService: LodgingImagesService,
   ) {}
 
   async create(
@@ -88,6 +91,52 @@ export class LodgingsService {
     const saved = await lodging.save();
     await saved.populate(this.contactPopulate);
     return saved;
+  }
+
+  async createWithImages(
+    dto: CreateLodgingWithImagesDto,
+    files:
+      | Array<{ buffer: Buffer; mimetype: string; size: number }>
+      | undefined,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<LodgingDocument> {
+    const safeFiles = files ?? [];
+    const hasMainImage = Boolean(dto.mainImage?.trim());
+
+    if (!hasMainImage && safeFiles.length === 0) {
+      throw new DomainException(
+        'mainImage is required when no image files are provided',
+        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const createDto: CreateLodgingDto = {
+      ...dto,
+      mainImage: dto.mainImage?.trim() || 'lodgings/default-placeholder.webp',
+      images: dto.images ?? [],
+    };
+
+    const created = await this.create(createDto, ownerId);
+
+    if (safeFiles.length === 0) {
+      return created;
+    }
+
+    try {
+      await this.lodgingImagesService.attachUploadedFiles(
+        created._id.toString(),
+        safeFiles,
+        ownerId,
+        role,
+      );
+    } catch (error) {
+      await this.lodgingModel.deleteOne({ _id: created._id });
+      throw error;
+    }
+
+    return this.findAdminById(created._id.toString(), ownerId, role);
   }
 
   async findPublicPaginated(
