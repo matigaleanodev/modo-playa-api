@@ -257,7 +257,8 @@ export class LodgingsAdminController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Alojamiento actualizado correctamente con imágenes procesadas',
+    description:
+      'Alojamiento actualizado correctamente con imágenes procesadas',
     schema: { example: LODGING_RESPONSE_EXAMPLE },
   })
   @Patch(':id/with-images')
@@ -408,7 +409,9 @@ export class LodgingsAdminController {
     return dto;
   }
 
-  private parseMultipartUpdatePayload(payload: string): UpdateLodgingWithImagesDto {
+  private parseMultipartUpdatePayload(
+    payload: string,
+  ): UpdateLodgingWithImagesDto {
     let parsed: unknown;
     try {
       parsed = JSON.parse(payload);

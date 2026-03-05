@@ -108,7 +108,9 @@ describe('LodgingsAdminController', () => {
         minNights: 2,
       }),
     };
-    const files = [{ buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 }];
+    const files = [
+      { buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 },
+    ];
 
     mockService.createWithImages.mockResolvedValue({
       _id: '1',
@@ -196,7 +198,9 @@ describe('LodgingsAdminController', () => {
         title: 'Updated',
       }),
     };
-    const files = [{ buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 }];
+    const files = [
+      { buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 },
+    ];
 
     mockService.updateWithImages.mockResolvedValue({
       _id: '1',
@@ -206,7 +210,12 @@ describe('LodgingsAdminController', () => {
       mediaImages: [],
     });
 
-    const result = await controller.updateWithImages('1', body, files, mockRequest);
+    const result = await controller.updateWithImages(
+      '1',
+      body,
+      files,
+      mockRequest,
+    );
 
     expect(mockService.updateWithImages).toHaveBeenCalledWith(
       '1',
@@ -266,7 +275,7 @@ describe('LodgingsAdminController', () => {
 
   it('debe eliminar occupiedRange con ownerId y role', async () => {
     const dto = { from: '2026-01-10', to: '2026-01-15' };
-    const ranges: typeof dto[] = [];
+    const ranges: (typeof dto)[] = [];
     mockService.removeOccupiedRange.mockResolvedValue(ranges);
 
     const result = await controller.removeOccupiedRange('1', dto, mockRequest);

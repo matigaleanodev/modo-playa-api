@@ -236,14 +236,16 @@ export class LodgingsService {
   }
 
   async findPublicById(id: string): Promise<LodgingDocument> {
-    const lodging = await this.lodgingModel.findOne({
-      _id: toObjectIdOrThrow(id, {
-        message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-        httpStatus: HttpStatus.BAD_REQUEST,
-      }),
-      active: true,
-    }).populate(this.contactPopulate);
+    const lodging = await this.lodgingModel
+      .findOne({
+        _id: toObjectIdOrThrow(id, {
+          message: 'Invalid lodging id',
+          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+        active: true,
+      })
+      .populate(this.contactPopulate);
 
     if (!lodging) {
       throw new DomainException(
@@ -457,7 +459,10 @@ export class LodgingsService {
     const lodging = await this.findAdminById(id, ownerId, role);
     const normalizedNewRange = this.normalizeAndValidateRange(range);
 
-    this.ensureNoRangeConflicts(normalizedNewRange, lodging.occupiedRanges ?? []);
+    this.ensureNoRangeConflicts(
+      normalizedNewRange,
+      lodging.occupiedRanges ?? [],
+    );
 
     lodging.occupiedRanges = [
       ...(lodging.occupiedRanges ?? []),

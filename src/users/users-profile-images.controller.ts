@@ -68,7 +68,8 @@ export class UsersProfileImagesController {
   @UseInterceptors(FileInterceptor('file'))
   upload(
     @Param('id') userId: string,
-    @UploadedFile() file: { buffer: Buffer; mimetype: string; size: number } | undefined,
+    @UploadedFile()
+    file: { buffer: Buffer; mimetype: string; size: number } | undefined,
     @Req() req: Request & { user: RequestUser },
   ): Promise<ConfirmUserProfileImageResponseDto> {
     if (!file) {

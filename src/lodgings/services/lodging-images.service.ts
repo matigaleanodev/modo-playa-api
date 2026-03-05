@@ -384,7 +384,11 @@ export class LodgingImagesService {
       return;
     }
 
-    const lodging = await this.findOwnedLodgingOrThrow(lodgingId, ownerId, role);
+    const lodging = await this.findOwnedLodgingOrThrow(
+      lodgingId,
+      ownerId,
+      role,
+    );
     const existingImages = this.getLodgingImages(lodging);
     this.policy.assertCanReserveSlot(existingImages.length, 0);
 

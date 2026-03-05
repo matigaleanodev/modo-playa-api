@@ -1,10 +1,5 @@
 import { OmitType } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsOptional,
-  IsString,
-  IsUrl,
-} from 'class-validator';
+import { IsArray, IsOptional, IsString, IsUrl } from 'class-validator';
 import { CreateLodgingDto } from './create-lodging.dto';
 
 export class CreateLodgingWithImagesDto extends OmitType(CreateLodgingDto, [

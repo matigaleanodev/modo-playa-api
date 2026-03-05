@@ -99,9 +99,7 @@ export class LodgingMapper {
     };
 
     const idFromNested =
-      typeof asObj._id === 'string'
-        ? asObj._id
-        : asObj._id?.toString?.();
+      typeof asObj._id === 'string' ? asObj._id : asObj._id?.toString?.();
     const id = idFromNested ?? asObj.toString?.();
 
     if (!id) {
