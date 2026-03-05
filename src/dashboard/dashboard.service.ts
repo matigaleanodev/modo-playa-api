@@ -515,6 +515,14 @@ export class DashboardService {
     const alerts: DashboardSummaryResponseDto['alerts'] = [];
 
     this.pushAlert(alerts, {
+      code: 'CONTACTS_NOT_CREATED',
+      severity: 'warning',
+      count: input.contacts.total === 0 ? 1 : 0,
+      message:
+        'No hay contactos creados. Creá un contacto antes de generar alojamientos.',
+    });
+
+    this.pushAlert(alerts, {
       code: 'LODGING_WITHOUT_CONTACT',
       severity: 'warning',
       count: input.lodgings.withoutContact,

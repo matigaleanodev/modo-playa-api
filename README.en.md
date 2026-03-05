@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/modo_playa_tentativo.png" alt="Foodly Notes" width="200" />
+  <img src="docs/assets/modo_playa_transparente.png" alt="Modo Playa" width="200" />
 </p>
 # Modo Playa -- API
 
@@ -35,8 +35,9 @@ Multi-tenancy is implemented through:
 - Automatic owner filtering in admin endpoints
 - Clear separation between public and private routes
 
-Each OWNER: - Can only access their own contacts - Can only manage their
-own lodgings - Can only manage their own users
+- Can only access their own contacts.
+- Can only manage their own lodgings.
+- Can only manage their own users.
 
 ---
 
@@ -56,7 +57,7 @@ own lodgings - Can only manage their own users
 - Owner-based user creation
 - Owner-based listing
 - Update and deactivation
-- Profile image with direct upload to R2 + backend confirmation
+- Profile image managed directly by backend (multipart)
 
 ### 📇 Contacts
 
@@ -73,7 +74,20 @@ own lodgings - Can only manage their own users
 - Availability range validation
 - Contact relation
 - Image management (up to 5) with default image
-- Direct upload to R2 via signed URL + confirmation and WebP normalization
+- Unified create/update with images via backend (`multipart/form-data`)
+- Backend WebP normalization for uploaded images
+
+### 📊 Dashboard
+
+- Consolidated admin summary
+- Lodgings, contacts, and users metrics
+- Prioritized operational alerts (for example, create a contact before lodgings)
+- Owner-scoped recent activity feed
+
+### 🌤️ Destinations
+
+- Public list of supported destinations
+- Destination context (current weather, short forecast, sunrise/sunset)
 
 ### ✉️ Mail
 
@@ -88,6 +102,31 @@ own lodgings - Can only manage their own users
 - Typed mocks
 - Strict TypeScript usage
 - Modular isolation
+
+---
+
+## 🌍 Endpoints
+
+All endpoints are under:
+
+`/api`
+
+Examples:
+
+- `POST /api/auth/login`
+- `GET /api/lodgings`
+- `GET /api/admin/lodgings`
+- `POST /api/admin/contacts`
+- `POST /api/admin/lodgings/with-images`
+- `PATCH /api/admin/lodgings/:id/with-images`
+- `POST /api/admin/users/:id/profile-image/upload`
+- `GET /api/admin/dashboard/summary`
+- `GET /api/destinations`
+- `GET /api/destinations/:id/context`
+
+Global validation uses `whitelist + forbidNonWhitelisted`, so undefined
+fields in DTOs are rejected (for example, do not send `id` in
+`POST /api/admin/contacts`).
 
 ---
 

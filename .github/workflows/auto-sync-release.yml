@@ -1,0 +1,48 @@
+name: Auto sync release to dev
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync main into dev
+        env:
+          DEV_SYNC_PAT: ${{ secrets.DEV_SYNC_PAT }}
+        run: |
+          if [ -z "$DEV_SYNC_PAT" ]; then
+            echo "Falta configurar el secret DEV_SYNC_PAT"
+            exit 1
+          fi
+
+          git config --local --unset-all http.https://github.com/.extraheader || true
+
+          git fetch origin main dev
+          git checkout dev
+          if git merge-base --is-ancestor HEAD origin/main; then
+            echo "Fast-forward disponible: se aplica el mismo commit de main en dev."
+            git merge --ff-only origin/main
+          else
+            echo "Fast-forward no disponible: se crea merge de sincronización."
+            git merge --no-ff origin/main -m "chore(sync): sincronización automática de main en dev"
+          fi
+          git remote set-url origin https://x-access-token:${DEV_SYNC_PAT}@github.com/${{ github.repository }}.git
+          git push origin dev

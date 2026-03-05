@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/modo_playa_transparente.png" alt="Foodly Notes" width="200" />
+  <img src="docs/assets/modo_playa_transparente.png" alt="Modo Playa" width="200" />
 </p>
 
 # Modo Playa -- API
@@ -38,9 +38,9 @@ La API implementa un modelo multi-tenant basado en:
 - Filtros automáticos por `ownerId` en endpoints administrativos
 - Separación estricta entre endpoints públicos y privados
 
-Cada OWNER: - Solo puede ver y modificar sus propios contactos - Solo
-puede ver y modificar sus propios alojamientos - Solo puede gestionar
-sus propios usuarios
+- Solo puede ver y modificar sus propios contactos.
+- Solo puede ver y modificar sus propios alojamientos.
+- Solo puede gestionar sus propios usuarios.
 
 ---
 
@@ -60,7 +60,7 @@ sus propios usuarios
 - Creación de usuarios por propietario
 - Listado por owner
 - Actualización y desactivación
-- Imagen de perfil con upload directo a R2 + confirmación backend
+- Imagen de perfil gestionada por backend (multipart)
 
 ### 📇 Contacts
 
@@ -77,7 +77,20 @@ sus propios usuarios
 - Rango de disponibilidad validado
 - Relación con Contact
 - Gestión de imágenes (hasta 5) con imagen predeterminada
-- Upload directo a R2 con URL firmada + confirmación y normalización a WebP
+- Alta/edición unificadas con imágenes vía backend (`multipart/form-data`)
+- Normalización de imágenes a WebP en backend
+
+### 📊 Dashboard
+
+- Resumen consolidado para administración
+- Métricas de alojamientos, contactos y usuarios
+- Alertas operativas priorizadas (ej. crear contacto antes de alojamientos)
+- Actividad reciente derivada por owner
+
+### 🌤️ Destinations
+
+- Listado público de destinos soportados
+- Contexto por destino (clima actual, pronóstico corto, amanecer/atardecer)
 
 ### ✉️ Mail
 
@@ -98,9 +111,19 @@ Ejemplos:
 - `GET /api/lodgings`
 - `GET /api/admin/lodgings`
 - `POST /api/admin/contacts`
+- `POST /api/admin/lodgings/with-images`
+- `PATCH /api/admin/lodgings/:id/with-images`
+- `POST /api/admin/users/:id/profile-image/upload`
+- `GET /api/admin/dashboard/summary`
+- `GET /api/destinations`
+- `GET /api/destinations/:id/context`
 
 La API también incluye endpoints administrativos para gestión de media
-(health de R2, imágenes de alojamientos e imagen de perfil de usuario).
+(health de R2 y gestión de imágenes).
+
+La validación global usa `whitelist + forbidNonWhitelisted`, por lo que
+se rechazan campos no definidos en DTOs (por ejemplo, no enviar `id` en
+`POST /api/admin/contacts`).
 
 ---
 

@@ -13,9 +13,14 @@ describe('LodgingsAdminController', () => {
 
   const mockService = {
     create: jest.fn(),
+    createWithImages: jest.fn(),
     findAdminPaginated: jest.fn(),
     findAdminById: jest.fn(),
     update: jest.fn(),
+    updateWithImages: jest.fn(),
+    getOccupiedRanges: jest.fn(),
+    addOccupiedRange: jest.fn(),
+    removeOccupiedRange: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -87,6 +92,47 @@ describe('LodgingsAdminController', () => {
     ]);
   });
 
+  it('debe llamar a createWithImages con payload parseado, imágenes y owner/role', async () => {
+    const body = {
+      payload: JSON.stringify({
+        title: 'Test',
+        description: 'Desc',
+        location: 'Loc',
+        city: 'City',
+        type: 'house',
+        price: 100,
+        priceUnit: 'night',
+        maxGuests: 4,
+        bedrooms: 2,
+        bathrooms: 1,
+        minNights: 2,
+      }),
+    };
+    const files = [
+      { buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 },
+    ];
+
+    mockService.createWithImages.mockResolvedValue({
+      _id: '1',
+      title: 'Test',
+      mainImage: 'lodgings/a/original.webp',
+      images: [],
+      mediaImages: [],
+    });
+
+    const result = await controller.createWithImages(body, files, mockRequest);
+
+    expect(mockService.createWithImages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Test',
+      }),
+      files,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result.id).toBe('1');
+  });
+
   it('debe llamar a findAdminPaginated con ownerId y role', async () => {
     const query = {} as AdminLodgingsQueryDto;
 
@@ -146,6 +192,43 @@ describe('LodgingsAdminController', () => {
     expect(result.title).toBe('Updated');
   });
 
+  it('debe llamar a updateWithImages con payload parseado, imágenes y owner/role', async () => {
+    const body = {
+      payload: JSON.stringify({
+        title: 'Updated',
+      }),
+    };
+    const files = [
+      { buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 },
+    ];
+
+    mockService.updateWithImages.mockResolvedValue({
+      _id: '1',
+      title: 'Updated',
+      mainImage: 'lodgings/a/original.webp',
+      images: [],
+      mediaImages: [],
+    });
+
+    const result = await controller.updateWithImages(
+      '1',
+      body,
+      files,
+      mockRequest,
+    );
+
+    expect(mockService.updateWithImages).toHaveBeenCalledWith(
+      '1',
+      expect.objectContaining({
+        title: 'Updated',
+      }),
+      files,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result.id).toBe('1');
+  });
+
   it('debe llamar a remove con ownerId y role', async () => {
     mockService.remove.mockResolvedValue({ deleted: true });
 
@@ -158,5 +241,51 @@ describe('LodgingsAdminController', () => {
     );
 
     expect(result).toEqual({ deleted: true });
+  });
+
+  it('debe listar occupiedRanges con ownerId y role', async () => {
+    const ranges = [{ from: '2026-01-10', to: '2026-01-15' }];
+    mockService.getOccupiedRanges.mockResolvedValue(ranges);
+
+    const result = await controller.getOccupiedRanges('1', mockRequest);
+
+    expect(mockService.getOccupiedRanges).toHaveBeenCalledWith(
+      '1',
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result).toEqual(ranges);
+  });
+
+  it('debe agregar occupiedRange con ownerId y role', async () => {
+    const dto = { from: '2026-01-10', to: '2026-01-15' };
+    const ranges = [dto];
+    mockService.addOccupiedRange.mockResolvedValue(ranges);
+
+    const result = await controller.addOccupiedRange('1', dto, mockRequest);
+
+    expect(mockService.addOccupiedRange).toHaveBeenCalledWith(
+      '1',
+      dto,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result).toEqual(ranges);
+  });
+
+  it('debe eliminar occupiedRange con ownerId y role', async () => {
+    const dto = { from: '2026-01-10', to: '2026-01-15' };
+    const ranges: (typeof dto)[] = [];
+    mockService.removeOccupiedRange.mockResolvedValue(ranges);
+
+    const result = await controller.removeOccupiedRange('1', dto, mockRequest);
+
+    expect(mockService.removeOccupiedRange).toHaveBeenCalledWith(
+      '1',
+      dto,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result).toEqual(ranges);
   });
 });
