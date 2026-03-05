@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/modo_playa_transparente.png" alt="Foodly Notes" width="200" />
+  <img src="docs/assets/modo_playa_transparente.png" alt="Modo Playa" width="200" />
 </p>
 
 # Modo Playa -- API
@@ -38,9 +38,9 @@ La API implementa un modelo multi-tenant basado en:
 - Filtros automáticos por `ownerId` en endpoints administrativos
 - Separación estricta entre endpoints públicos y privados
 
-Cada OWNER: - Solo puede ver y modificar sus propios contactos - Solo
-puede ver y modificar sus propios alojamientos - Solo puede gestionar
-sus propios usuarios
+- Solo puede ver y modificar sus propios contactos.
+- Solo puede ver y modificar sus propios alojamientos.
+- Solo puede gestionar sus propios usuarios.
 
 ---
 
@@ -79,6 +79,18 @@ sus propios usuarios
 - Gestión de imágenes (hasta 5) con imagen predeterminada
 - Upload directo a R2 con URL firmada + confirmación y normalización a WebP
 
+### 📊 Dashboard
+
+- Resumen consolidado para administración
+- Métricas de alojamientos, contactos y usuarios
+- Alertas operativas priorizadas (ej. crear contacto antes de alojamientos)
+- Actividad reciente derivada por owner
+
+### 🌤️ Destinations
+
+- Listado público de destinos soportados
+- Contexto por destino (clima actual, pronóstico corto, amanecer/atardecer)
+
 ### ✉️ Mail
 
 - Envío de código de recuperación
@@ -98,9 +110,16 @@ Ejemplos:
 - `GET /api/lodgings`
 - `GET /api/admin/lodgings`
 - `POST /api/admin/contacts`
+- `GET /api/admin/dashboard/summary`
+- `GET /api/destinations`
+- `GET /api/destinations/:id/context`
 
 La API también incluye endpoints administrativos para gestión de media
 (health de R2, imágenes de alojamientos e imagen de perfil de usuario).
+
+La validación global usa `whitelist + forbidNonWhitelisted`, por lo que
+se rechazan campos no definidos en DTOs (por ejemplo, no enviar `id` en
+`POST /api/admin/contacts`).
 
 ---
 

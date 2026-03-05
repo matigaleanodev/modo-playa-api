@@ -19,11 +19,18 @@ Crear archivo `.env` a partir de `.env.example`:
 cp .env.example .env
 ```
 
+En PowerShell (Windows):
+
+```powershell
+Copy-Item .env.example .env
+```
+
 Completar especialmente:
 
 - MongoDB / JWT / Resend
 - Variables de Cloudflare R2 (`R2_*`)
 - `MEDIA_PUBLIC_BASE_URL` (dominio público/custom domain o URL pública de R2)
+- `SUPERADMIN_ID` (opcional, para habilitar rol `SUPERADMIN` por ID)
 
 Ejemplo mínimo:
 
@@ -60,8 +67,12 @@ http://localhost:3000/api
 
 Notas:
 
+- `GET /api/admin/dashboard/summary` expone métricas y alertas operativas para el owner autenticado.
+- `GET /api/destinations` y `GET /api/destinations/:id/context` son endpoints públicos de destinos.
 - `GET /api/admin/media/health` permite validar conexión con R2 (requiere JWT).
 - Las imágenes de lodgings y perfil usan upload directo a R2 con confirmación backend.
+- La validación global rechaza campos no definidos en DTOs (`whitelist + forbidNonWhitelisted`).
+  Ejemplo: en `POST /api/admin/contacts` no enviar `id` en el body.
 
 ---
 

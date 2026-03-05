@@ -19,11 +19,18 @@ Create a `.env` file from `.env.example`:
 cp .env.example .env
 ```
 
+On PowerShell (Windows):
+
+```powershell
+Copy-Item .env.example .env
+```
+
 Make sure to fill in:
 
 - MongoDB / JWT / Resend settings
 - Cloudflare R2 variables (`R2_*`)
 - `MEDIA_PUBLIC_BASE_URL` (custom/public media domain)
+- `SUPERADMIN_ID` (optional, to enable `SUPERADMIN` role by user ID)
 
 Minimal example:
 
@@ -60,8 +67,12 @@ http://localhost:3000/api
 
 Notes:
 
+- `GET /api/admin/dashboard/summary` returns owner-scoped metrics and operational alerts.
+- `GET /api/destinations` and `GET /api/destinations/:id/context` are public destinations endpoints.
 - `GET /api/admin/media/health` validates R2 connectivity (JWT required).
 - Lodging/profile images use direct upload to R2 plus backend confirmation.
+- Global validation rejects undefined DTO fields (`whitelist + forbidNonWhitelisted`).
+  Example: do not send `id` in `POST /api/admin/contacts` body.
 
 ---
 
