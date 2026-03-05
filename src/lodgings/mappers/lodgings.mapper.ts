@@ -122,5 +122,41 @@ export class LodgingMapper {
         notes: asObj.notes,
       },
     };
+
+    const idFromNested =
+      typeof asObj._id === 'string' ? asObj._id : asObj._id?.toString?.();
+    const id = idFromNested ?? asObj.toString?.();
+
+    if (!id) {
+      return {};
+    }
+
+    if (!asObj.name) {
+      return { contactId: id };
+    }
+
+    return {
+      contactId: id,
+      contact: {
+        id,
+        name: asObj.name,
+        email: asObj.email,
+        whatsapp: asObj.whatsapp,
+        isDefault: !!asObj.isDefault,
+        active: asObj.active ?? true,
+        notes: asObj.notes,
+      },
+    };
+  }
+
+  private static toPublicUrl(
+    value: string | undefined,
+    mediaUrlBuilder?: MediaUrlBuilder,
+  ): string | undefined {
+    if (!value) {
+      return value;
+    }
+
+    return mediaUrlBuilder ? mediaUrlBuilder.buildPublicUrl(value) : value;
   }
 }
