@@ -60,7 +60,7 @@ La API implementa un modelo multi-tenant basado en:
 - Creación de usuarios por propietario
 - Listado por owner
 - Actualización y desactivación
-- Imagen de perfil con upload directo a R2 + confirmación backend
+- Imagen de perfil gestionada por backend (multipart)
 
 ### 📇 Contacts
 
@@ -77,7 +77,8 @@ La API implementa un modelo multi-tenant basado en:
 - Rango de disponibilidad validado
 - Relación con Contact
 - Gestión de imágenes (hasta 5) con imagen predeterminada
-- Upload directo a R2 con URL firmada + confirmación y normalización a WebP
+- Alta/edición unificadas con imágenes vía backend (`multipart/form-data`)
+- Normalización de imágenes a WebP en backend
 
 ### 📊 Dashboard
 
@@ -110,12 +111,15 @@ Ejemplos:
 - `GET /api/lodgings`
 - `GET /api/admin/lodgings`
 - `POST /api/admin/contacts`
+- `POST /api/admin/lodgings/with-images`
+- `PATCH /api/admin/lodgings/:id/with-images`
+- `POST /api/admin/users/:id/profile-image/upload`
 - `GET /api/admin/dashboard/summary`
 - `GET /api/destinations`
 - `GET /api/destinations/:id/context`
 
 La API también incluye endpoints administrativos para gestión de media
-(health de R2, imágenes de alojamientos e imagen de perfil de usuario).
+(health de R2 y gestión de imágenes).
 
 La validación global usa `whitelist + forbidNonWhitelisted`, por lo que
 se rechazan campos no definidos en DTOs (por ejemplo, no enviar `id` en

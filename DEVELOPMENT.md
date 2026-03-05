@@ -69,8 +69,10 @@ Notas:
 
 - `GET /api/admin/dashboard/summary` expone métricas y alertas operativas para el owner autenticado.
 - `GET /api/destinations` y `GET /api/destinations/:id/context` son endpoints públicos de destinos.
+- `POST /api/admin/lodgings/with-images` y `PATCH /api/admin/lodgings/:id/with-images` unifican datos + imágenes de alojamiento por backend.
+- `POST /api/admin/users/:id/profile-image/upload` permite subir imagen de perfil directo al backend.
 - `GET /api/admin/media/health` permite validar conexión con R2 (requiere JWT).
-- Las imágenes de lodgings y perfil usan upload directo a R2 con confirmación backend.
+- La recomendación actual es flujo backend-only para imágenes (sin signed URL desde frontend).
 - La validación global rechaza campos no definidos en DTOs (`whitelist + forbidNonWhitelisted`).
   Ejemplo: en `POST /api/admin/contacts` no enviar `id` en el body.
 

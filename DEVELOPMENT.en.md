@@ -69,8 +69,10 @@ Notes:
 
 - `GET /api/admin/dashboard/summary` returns owner-scoped metrics and operational alerts.
 - `GET /api/destinations` and `GET /api/destinations/:id/context` are public destinations endpoints.
+- `POST /api/admin/lodgings/with-images` and `PATCH /api/admin/lodgings/:id/with-images` provide unified lodging data + image handling in backend.
+- `POST /api/admin/users/:id/profile-image/upload` uploads profile images directly to backend.
 - `GET /api/admin/media/health` validates R2 connectivity (JWT required).
-- Lodging/profile images use direct upload to R2 plus backend confirmation.
+- Current recommendation is backend-only image flow (no signed URL upload from frontend).
 - Global validation rejects undefined DTO fields (`whitelist + forbidNonWhitelisted`).
   Example: do not send `id` in `POST /api/admin/contacts` body.
 
