@@ -124,14 +124,4 @@ export class LodgingMapper {
     };
   }
 
-  private static toPublicUrl(
-    value: string | undefined,
-    mediaUrlBuilder?: MediaUrlBuilder,
-  ): string | undefined {
-    if (!value) {
-      return value;
-    }
-
-    return mediaUrlBuilder ? mediaUrlBuilder.buildPublicUrl(value) : value;
-  }
 }
