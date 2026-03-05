@@ -28,11 +28,7 @@ export class SunService {
 
       const { status, results } = response.data;
 
-      if (
-        status !== 'OK' ||
-        !results?.sunrise ||
-        !results?.sunset
-      ) {
+      if (status !== 'OK' || !results?.sunrise || !results?.sunset) {
         throw new ServiceUnavailableException(
           'Respuesta incompleta del proveedor de amanecer/atardecer',
         );

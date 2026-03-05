@@ -175,4 +175,56 @@ describe('DashboardService', () => {
     expect(result.ownerScope.role).toBe('SUPERADMIN');
     expect(result.recentActivity.source).toBe('none');
   });
+
+  it('debe priorizar la sugerencia de crear contacto cuando no hay contactos', async () => {
+    const ownerId = new Types.ObjectId().toString();
+
+    lodgingModelMock.aggregate.mockResolvedValueOnce([
+      {
+        totals: [
+          {
+            total: 1,
+            active: 1,
+            inactive: 0,
+            withAvailability: 0,
+            withoutContact: 1,
+          },
+        ],
+        byCity: [],
+        byType: [],
+      },
+    ]);
+    contactModelMock.aggregate.mockResolvedValueOnce([
+      {
+        total: 0,
+        active: 0,
+        inactive: 0,
+        defaults: 0,
+        withEmail: 0,
+        withWhatsapp: 0,
+        incomplete: 0,
+      },
+    ]);
+    userModelMock.aggregate.mockResolvedValueOnce([
+      {
+        total: 0,
+        active: 0,
+        inactive: 0,
+        passwordSet: 0,
+        pendingActivation: 0,
+        neverLoggedIn: 0,
+      },
+    ]);
+
+    lodgingModelMock.find.mockReturnValue(createQueryMock([]));
+    contactModelMock.find.mockReturnValue(createQueryMock([]));
+    userModelMock.find.mockReturnValue(createQueryMock([]));
+
+    const result = await service.getSummary(ownerId, 'OWNER');
+
+    expect(result.alerts[0]?.code).toBe('CONTACTS_NOT_CREATED');
+    expect(result.alerts.map((a) => a.code)).toEqual(
+      expect.arrayContaining(['LODGING_WITHOUT_CONTACT']),
+    );
+  });
 });

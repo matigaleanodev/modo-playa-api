@@ -3,6 +3,7 @@ import { LodgingAmenity } from '@lodgings/enums/amenities.enum';
 import { LodgingType } from '@lodgings/enums/lodging-type.enum';
 import { PriceUnit } from '@lodgings/enums/price-unit.enum';
 import { LodgingImageResponseDto } from './lodging-image-response.dto';
+import { ContactResponseDto } from '@contacts/dto/contact-response.dto';
 
 export class LodgingResponseDto {
   @ApiProperty()
@@ -72,4 +73,18 @@ export class LodgingResponseDto {
       'Metadata de imágenes procesadas. `url` y `variants.*` son URLs públicas; `key` permanece como referencia interna.',
   })
   mediaImages?: LodgingImageResponseDto[];
+
+  @ApiProperty({
+    required: false,
+    description: 'ID del contacto asociado al alojamiento.',
+    example: '699c9b30436edbee48110155',
+  })
+  contactId?: string;
+
+  @ApiProperty({
+    required: false,
+    type: ContactResponseDto,
+    description: 'Datos del contacto asociado cuando está disponible.',
+  })
+  contact?: ContactResponseDto;
 }

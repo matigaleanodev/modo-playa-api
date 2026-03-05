@@ -1,14 +1,24 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Param,
   Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
 import { UserProfileImagesService } from '@users/services/user-profile-images.service';
@@ -38,6 +48,38 @@ export class UsersProfileImagesController {
       req.user.ownerId,
       userId,
       dto,
+    );
+  }
+
+  @ApiOperation({
+    summary: 'Subir imagen de perfil directo al backend',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  upload(
+    @Param('id') userId: string,
+    @UploadedFile()
+    file: { buffer: Buffer; mimetype: string; size: number } | undefined,
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<ConfirmUserProfileImageResponseDto> {
+    if (!file) {
+      throw new BadRequestException('file is required');
+    }
+
+    return this.userProfileImagesService.uploadProfileImage(
+      req.user.ownerId,
+      userId,
+      file,
     );
   }
 

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -53,7 +54,11 @@ jobs:
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u matigaleanodev --password-stdin
 
-            sed -i "s|^IMAGE=.*$|IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}|g" .env
+            if grep -q '^IMAGE=' .env; then
+              sed -i "s|^IMAGE=.*$|IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}|g" .env
+            else
+              echo "IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}" >> .env
+            fi
 
             docker compose pull
             docker compose up -d

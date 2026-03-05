@@ -117,9 +117,7 @@ describe('WeatherService', () => {
   });
 
   it('debe lanzar ServiceUnavailableException si falla el proveedor externo', async () => {
-    mockHttpService.get.mockReturnValue(
-      throwError(() => new Error('timeout')),
-    );
+    mockHttpService.get.mockReturnValue(throwError(() => new Error('timeout')));
 
     await expect(service.getContext(destination)).rejects.toThrow(
       ServiceUnavailableException,
