@@ -18,6 +18,7 @@ import { toObjectIdOrThrow } from '@common/utils/object-id.util';
 import { escapeRegex } from '@common/utils/regex.util';
 import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
 import { CreateLodgingWithImagesDto } from '@lodgings/dto/create-lodging-with-images.dto';
+import { UpdateLodgingWithImagesDto } from '@lodgings/dto/update-lodging-with-images.dto';
 
 @Injectable()
 export class LodgingsService {
@@ -137,6 +138,32 @@ export class LodgingsService {
     }
 
     return this.findAdminById(created._id.toString(), ownerId, role);
+  }
+
+  async updateWithImages(
+    id: string,
+    dto: UpdateLodgingWithImagesDto,
+    files:
+      | Array<{ buffer: Buffer; mimetype: string; size: number }>
+      | undefined,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<LodgingDocument> {
+    await this.update(id, dto, ownerId, role);
+
+    const safeFiles = files ?? [];
+    if (safeFiles.length === 0) {
+      return this.findAdminById(id, ownerId, role);
+    }
+
+    await this.lodgingImagesService.attachUploadedFiles(
+      id,
+      safeFiles,
+      ownerId,
+      role,
+    );
+
+    return this.findAdminById(id, ownerId, role);
   }
 
   async findPublicPaginated(

@@ -35,6 +35,10 @@ import {
   CreateLodgingMultipartBodyDto,
   CreateLodgingWithImagesDto,
 } from '../dto/create-lodging-with-images.dto';
+import {
+  UpdateLodgingMultipartBodyDto,
+  UpdateLodgingWithImagesDto,
+} from '../dto/update-lodging-with-images.dto';
 import { UpdateLodgingDto } from '../dto/update-lodging.dto';
 import { AvailabilityRangeDto } from '../dto/availability-range.dto';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
@@ -230,6 +234,54 @@ export class LodgingsAdminController {
   }
 
   @ApiOperation({
+    summary: 'Actualizar alojamiento con imágenes (flujo unificado)',
+    description:
+      'Actualiza el alojamiento y procesa nuevas imágenes en una sola llamada multipart/form-data.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['payload'],
+      properties: {
+        payload: {
+          type: 'string',
+          description: 'JSON serializado con UpdateLodgingWithImagesDto',
+        },
+        images: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Alojamiento actualizado correctamente con imágenes procesadas',
+    schema: { example: LODGING_RESPONSE_EXAMPLE },
+  })
+  @Patch(':id/with-images')
+  @UseInterceptors(FilesInterceptor('images', 5))
+  async updateWithImages(
+    @Param('id') id: string,
+    @Body() body: UpdateLodgingMultipartBodyDto,
+    @UploadedFiles()
+    files: Array<{ buffer: Buffer; mimetype: string; size: number }>,
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<LodgingResponseDto> {
+    const dto = this.parseMultipartUpdatePayload(body.payload);
+    const lodging = await this.lodgingsService.updateWithImages(
+      id,
+      dto,
+      files,
+      req.user.ownerId,
+      req.user.role,
+    );
+
+    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
+  }
+
+  @ApiOperation({
     summary: 'Obtener rangos ocupados del alojamiento',
     description: 'Devuelve los rangos ocupados (availability) del alojamiento.',
   })
@@ -344,6 +396,27 @@ export class LodgingsAdminController {
     }
 
     const dto = plainToInstance(CreateLodgingWithImagesDto, parsed);
+    const errors = validateSync(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+
+    return dto;
+  }
+
+  private parseMultipartUpdatePayload(payload: string): UpdateLodgingWithImagesDto {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(payload);
+    } catch {
+      throw new BadRequestException('Invalid payload JSON');
+    }
+
+    const dto = plainToInstance(UpdateLodgingWithImagesDto, parsed);
     const errors = validateSync(dto, {
       whitelist: true,
       forbidNonWhitelisted: true,
