@@ -17,6 +17,7 @@ describe('LodgingsAdminController', () => {
     findAdminPaginated: jest.fn(),
     findAdminById: jest.fn(),
     update: jest.fn(),
+    updateWithImages: jest.fn(),
     getOccupiedRanges: jest.fn(),
     addOccupiedRange: jest.fn(),
     removeOccupiedRange: jest.fn(),
@@ -187,6 +188,36 @@ describe('LodgingsAdminController', () => {
 
     expect(result.id).toBe('1');
     expect(result.title).toBe('Updated');
+  });
+
+  it('debe llamar a updateWithImages con payload parseado, imágenes y owner/role', async () => {
+    const body = {
+      payload: JSON.stringify({
+        title: 'Updated',
+      }),
+    };
+    const files = [{ buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 }];
+
+    mockService.updateWithImages.mockResolvedValue({
+      _id: '1',
+      title: 'Updated',
+      mainImage: 'lodgings/a/original.webp',
+      images: [],
+      mediaImages: [],
+    });
+
+    const result = await controller.updateWithImages('1', body, files, mockRequest);
+
+    expect(mockService.updateWithImages).toHaveBeenCalledWith(
+      '1',
+      expect.objectContaining({
+        title: 'Updated',
+      }),
+      files,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+    expect(result.id).toBe('1');
   });
 
   it('debe llamar a remove con ownerId y role', async () => {
