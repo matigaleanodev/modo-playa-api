@@ -3,6 +3,7 @@ import { LodgingResponseDto } from '../dto/lodging-response.dto';
 import { LodgingImageResponseDto } from '@lodgings/dto/lodging-image-response.dto';
 import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
 import { ContactResponseDto } from '@contacts/dto/contact-response.dto';
+import { AvailabilityRangeDto } from '@lodgings/dto/availability-range.dto';
 
 export class LodgingMapper {
   static toResponse(
@@ -38,6 +39,12 @@ export class LodgingMapper {
           .map((image) => LodgingMapper.toPublicUrl(image, mediaUrlBuilder))
           .filter((image): image is string => Boolean(image))
       : [];
+    const imageUrls =
+      mediaImages && mediaImages.length > 0
+        ? mediaImages
+            .map((image) => image.url)
+            .filter((image): image is string => Boolean(image))
+        : normalizedImages;
 
     return {
       id: lodging._id.toString(),
@@ -55,8 +62,11 @@ export class LodgingMapper {
       distanceToBeach: lodging.distanceToBeach,
       amenities: lodging.amenities,
       mainImage: derivedMainImage ?? '',
-      images: normalizedImages,
+      images: Array.from(new Set(imageUrls)),
       mediaImages,
+      occupiedRanges: LodgingMapper.toAvailabilityRangesResponse(
+        lodging.occupiedRanges,
+      ),
       contactId,
       contact,
     };
@@ -122,5 +132,22 @@ export class LodgingMapper {
         notes: asObj.notes,
       },
     };
+  }
+
+  private static toAvailabilityRangesResponse(
+    ranges?: Array<{ from: Date | string; to: Date | string }>,
+  ): AvailabilityRangeDto[] | undefined {
+    if (!Array.isArray(ranges)) {
+      return undefined;
+    }
+
+    return ranges.map((range) => ({
+      from: LodgingMapper.toIsoDate(range.from),
+      to: LodgingMapper.toIsoDate(range.to),
+    }));
+  }
+
+  private static toIsoDate(value: Date | string): string {
+    return new Date(value).toISOString().slice(0, 10);
   }
 }

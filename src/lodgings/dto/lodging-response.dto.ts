@@ -4,6 +4,7 @@ import { LodgingType } from '@lodgings/enums/lodging-type.enum';
 import { PriceUnit } from '@lodgings/enums/price-unit.enum';
 import { LodgingImageResponseDto } from './lodging-image-response.dto';
 import { ContactResponseDto } from '@contacts/dto/contact-response.dto';
+import { AvailabilityRangeDto } from './availability-range.dto';
 
 export class LodgingResponseDto {
   @ApiProperty()
@@ -73,6 +74,14 @@ export class LodgingResponseDto {
       'Metadata de imágenes procesadas. `url` y `variants.*` son URLs públicas; `key` permanece como referencia interna.',
   })
   mediaImages?: LodgingImageResponseDto[];
+
+  @ApiProperty({
+    type: [AvailabilityRangeDto],
+    required: false,
+    description:
+      'Rangos ocupados normalizados en formato YYYY-MM-DD para consumo del frontend.',
+  })
+  occupiedRanges?: AvailabilityRangeDto[];
 
   @ApiProperty({
     required: false,
