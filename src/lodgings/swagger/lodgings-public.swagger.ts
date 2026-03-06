@@ -37,6 +37,12 @@ export const PUBLIC_LODGING_RESPONSE_EXAMPLE = {
       },
     },
   ],
+  occupiedRanges: [
+    {
+      from: '2026-01-10',
+      to: '2026-01-20',
+    },
+  ],
   contactId: '699c9b30436edbee48110155',
   contact: {
     id: '699c9b30436edbee48110155',
