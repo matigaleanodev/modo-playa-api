@@ -4,7 +4,7 @@ require('tsconfig-paths/register');
 const fs = require('node:fs');
 const path = require('node:path');
 const { NestFactory } = require('@nestjs/core');
-const { AppModule } = require('../src/app.module');
+const { OpenApiAppModule } = require('../src/swagger/openapi-app.module');
 const { createOpenApiDocument } = require('../src/swagger/openapi');
 
 function applyOpenApiGenerationEnvDefaults() {
@@ -35,7 +35,7 @@ function applyOpenApiGenerationEnvDefaults() {
 async function generateOpenApi() {
   applyOpenApiGenerationEnvDefaults();
 
-  const app = await NestFactory.create(AppModule, { logger: false });
+  const app = await NestFactory.create(OpenApiAppModule, { logger: false });
 
   try {
     const document = createOpenApiDocument(app);
