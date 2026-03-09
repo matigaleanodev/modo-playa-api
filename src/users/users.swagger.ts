@@ -1,30 +1,95 @@
-export const CREATE_USER_EXAMPLE = {
-  email: 'admin@modo-playa.com',
-  username: 'admin',
-};
+import { applyDecorators } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiIdParam } from '../swagger/decorators/api-id-param.decorator';
+import { ApiPaginatedOkResponse } from '../swagger/decorators/api-paginated-response.decorator';
+import {
+  ApiCreatedResponseWithType,
+  ApiOkResponseWithType,
+} from '../swagger/decorators/api-response-with-type.decorator';
+import {
+  createUserRequestExample,
+  updateUserRequestExample,
+  userResponseExample,
+  usersPaginatedResponseExample,
+} from '../swagger/examples/users.examples';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UserResponseDto } from './dto/user-response.dto';
 
-export const USER_RESPONSE_EXAMPLE = {
-  _id: '507f1f77bcf86cd799439011',
-  ownerId: '507f1f77bcf86cd799439000',
-  email: 'admin@modo-playa.com',
-  username: 'admin',
-  isPasswordSet: false,
-  isActive: true,
-  createdAt: '2026-02-12T10:00:00.000Z',
-  updatedAt: '2026-02-12T10:00:00.000Z',
-};
+export const CREATE_USER_EXAMPLE = createUserRequestExample;
+export const UPDATE_USER_EXAMPLE = updateUserRequestExample;
 
-export const UPDATE_USER_EXAMPLE = {
-  firstName: 'Juan',
-  lastName: 'Pérez',
-  displayName: 'Juan Pérez',
-  avatarUrl: 'https://example.com/avatar.jpg',
-  phone: '+5491122334455',
-};
+export function ApiUsersController() {
+  return applyDecorators(
+    ApiTags('Admin - Users'),
+    ApiBearerAuth('access-token'),
+  );
+}
 
-export const USER_LIST_RESPONSE_EXAMPLE = {
-  data: [USER_RESPONSE_EXAMPLE],
-  total: 1,
-  page: 1,
-  limit: 10,
-};
+export function ApiCreateUserDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Crear usuario para el owner actual',
+      description:
+        'Crea un usuario asociado al owner autenticado. Limite de 3 usuarios por owner salvo SUPERADMIN.',
+    }),
+    ApiBody({
+      type: CreateUserDto,
+      examples: {
+        default: {
+          value: createUserRequestExample,
+        },
+      },
+    }),
+    ApiCreatedResponseWithType(UserResponseDto, {
+      description: 'Usuario creado correctamente',
+      example: userResponseExample,
+    }),
+  );
+}
+
+export function ApiFindAllUsersDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Listar usuarios del owner actual',
+    }),
+    ApiPaginatedOkResponse(UserResponseDto, {
+      description: 'Listado de usuarios',
+      example: usersPaginatedResponseExample,
+    }),
+  );
+}
+
+export function ApiFindUserByIdDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Obtener usuario por ID',
+    }),
+    ApiIdParam('id', 'ID del usuario'),
+    ApiOkResponseWithType(UserResponseDto, {
+      description: 'Usuario encontrado',
+      example: userResponseExample,
+    }),
+  );
+}
+
+export function ApiUpdateUserDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Actualizar usuario',
+    }),
+    ApiIdParam('id', 'ID del usuario'),
+    ApiBody({
+      type: UpdateUserDto,
+      examples: {
+        default: {
+          value: updateUserRequestExample,
+        },
+      },
+    }),
+    ApiOkResponseWithType(UserResponseDto, {
+      description: 'Usuario actualizado',
+      example: userResponseExample,
+    }),
+  );
+}

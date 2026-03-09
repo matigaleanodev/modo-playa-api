@@ -7,220 +7,130 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
 import { ActivateDto } from './dto/activate.dto';
 import { RequestUser } from './interfaces/request-user.interface';
-import { SetPasswordDto } from './interfaces/set-password.interface';
+import { SetPasswordDto } from './dto/set-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guard/auth.guard';
 import { ChangePasswordDto } from './dto/chage-password.dto';
 import { VerifyResetCodeDto } from './dto/verifiy-reset-code.dto';
-import { AuthResponse } from './interfaces/auth-response.interface';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
-
-import {
-  AUTH_TOKEN_RESPONSE_EXAMPLE,
-  AUTH_LOGIN_RESPONSE_EXAMPLE,
-  FORGOT_PASSWORD_RESPONSE_EXAMPLE,
-  RESET_PASSWORD_RESPONSE_EXAMPLE,
-} from './swagger/auth.swagger';
-import { AuthUserResponse } from './interfaces/auth-user.interface';
 import { IdentifierDto } from './dto/identifier.dto';
+import { MessageResponseDto } from '../swagger/dto/message-response.dto';
+import { AccessTokenResponseDto } from '../swagger/dto/access-token-response.dto';
+import { AuthResponseDto } from './dto/auth-response.dto';
+import { AuthUserResponseDto } from './dto/auth-user-response.dto';
+import {
+  ApiActivateDoc,
+  ApiAuthController,
+  ApiChangePasswordDoc,
+  ApiForgotPasswordDoc,
+  ApiLoginDoc,
+  ApiMeDoc,
+  ApiRefreshDoc,
+  ApiRequestActivationDoc,
+  ApiResetPasswordDoc,
+  ApiSetPasswordDoc,
+  ApiUpdateMeDoc,
+  ApiVerifyResetCodeDoc,
+} from './swagger/auth.swagger';
 
-@ApiTags('Auth')
+@ApiAuthController()
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @ApiOperation({
-    summary: 'Solicitar activación de cuenta',
-    description:
-      'Genera y envía un código de activación al email del usuario si existe.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Código enviado si el usuario existe',
-  })
+  @ApiRequestActivationDoc()
   @Post('request-activation')
   async requestActivation(
-    @Body() dto: { identifier: string },
-  ): Promise<{ message: string }> {
+    @Body() dto: IdentifierDto,
+  ): Promise<MessageResponseDto> {
     await this.authService.requestActivation(dto.identifier);
 
     return {
-      message: 'Si el usuario existe, se envió un código de activación',
+      message: 'Si el usuario existe, se envio un codigo de activacion',
     };
   }
 
-  @ApiOperation({
-    summary: 'Activar usuario',
-    description:
-      'Genera un token temporal para que el usuario configure su contraseña.',
-  })
-  @ApiBody({ type: ActivateDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Token generado correctamente',
-    schema: { example: AUTH_TOKEN_RESPONSE_EXAMPLE },
-  })
+  @ApiActivateDoc()
   @Post('activate')
-  activate(@Body() dto: ActivateDto): Promise<{ accessToken: string }> {
+  activate(@Body() dto: ActivateDto): Promise<AccessTokenResponseDto> {
     return this.authService.activate(dto);
   }
 
-  @ApiOperation({
-    summary: 'Configurar contraseña inicial',
-  })
-  @ApiBody({ type: SetPasswordDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Login automático tras setear contraseña',
-    schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE },
-  })
-  @ApiBearerAuth('access-token')
+  @ApiSetPasswordDoc()
   @UseGuards(JwtAuthGuard)
   @Post('set-password')
   setPassword(
     @Request() req: { user: RequestUser },
     @Body() dto: SetPasswordDto,
-  ): Promise<AuthResponse> {
+  ): Promise<AuthResponseDto> {
     return this.authService.setPassword(req.user, dto);
   }
 
-  @ApiOperation({
-    summary: 'Login de usuario',
-  })
-  @ApiBody({ type: LoginDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Login exitoso',
-    schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE },
-  })
+  @ApiLoginDoc()
   @Post('login')
-  login(@Body() dto: LoginDto): Promise<AuthResponse> {
+  login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
   }
 
-  @ApiOperation({
-    summary: 'Refrescar tokens',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Tokens renovados',
-    schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE },
-  })
-  @ApiBearerAuth('access-token')
+  @ApiRefreshDoc()
   @UseGuards(JwtAuthGuard)
   @Post('refresh')
-  refresh(@Request() req: { user: RequestUser }): Promise<AuthResponse> {
+  refresh(@Request() req: { user: RequestUser }): Promise<AuthResponseDto> {
     return this.authService.refresh(req.user);
   }
 
-  @ApiOperation({
-    summary: 'Cambiar contraseña',
-  })
-  @ApiBody({ type: ChangePasswordDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Contraseña actualizada y tokens renovados',
-    schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE },
-  })
-  @ApiBearerAuth('access-token')
+  @ApiChangePasswordDoc()
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   changePassword(
     @Request() req: { user: RequestUser },
     @Body() dto: ChangePasswordDto,
-  ): Promise<AuthResponse> {
+  ): Promise<AuthResponseDto> {
     return this.authService.changePassword(req.user, dto);
   }
 
-  @ApiOperation({
-    summary: 'Solicitar código de recuperación',
-    description:
-      'Envía un código de recuperación al email si el usuario existe.',
-  })
-  @ApiBody({ type: IdentifierDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Mensaje genérico por seguridad',
-    schema: { example: FORGOT_PASSWORD_RESPONSE_EXAMPLE },
-  })
+  @ApiForgotPasswordDoc()
   @Post('forgot-password')
-  forgotPassword(@Body() dto: IdentifierDto): Promise<{ message: string }> {
+  forgotPassword(@Body() dto: IdentifierDto): Promise<MessageResponseDto> {
     return this.authService.forgotPassword(dto);
   }
 
-  @ApiOperation({
-    summary: 'Verificar código de recuperación',
-  })
-  @ApiBody({ type: VerifyResetCodeDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Token temporal para resetear contraseña',
-    schema: { example: AUTH_TOKEN_RESPONSE_EXAMPLE },
-  })
+  @ApiVerifyResetCodeDoc()
   @Post('verify-reset-code')
   verifyResetCode(
     @Body() dto: VerifyResetCodeDto,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<AccessTokenResponseDto> {
     return this.authService.verifyResetCode(dto);
   }
 
-  @ApiOperation({
-    summary: 'Resetear contraseña',
-  })
-  @ApiBody({ type: SetPasswordDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Contraseña actualizada correctamente',
-    schema: { example: RESET_PASSWORD_RESPONSE_EXAMPLE },
-  })
-  @ApiBearerAuth('access-token')
+  @ApiResetPasswordDoc()
   @UseGuards(JwtAuthGuard)
   @Post('reset-password')
   resetPassword(
     @Request() req: { user: RequestUser },
     @Body() dto: SetPasswordDto,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     return this.authService.resetPassword(req.user, dto);
   }
 
-  @ApiOperation({
-    summary: 'Obtener usuario autenticado',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Usuario autenticado',
-    schema: { example: AUTH_LOGIN_RESPONSE_EXAMPLE.user },
-  })
-  @ApiBearerAuth('access-token')
+  @ApiMeDoc()
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@Request() req: { user: RequestUser }): Promise<AuthUserResponse> {
+  me(@Request() req: { user: RequestUser }): Promise<AuthUserResponseDto> {
     return this.authService.me(req.user);
   }
 
-  @ApiOperation({
-    summary: 'Actualizar perfil propio',
-    description:
-      'Actualiza datos básicos del usuario autenticado. La imagen de perfil se gestiona con endpoints de media.',
-  })
-  @ApiBearerAuth('access-token')
+  @ApiUpdateMeDoc()
   @UseGuards(JwtAuthGuard)
   @Patch('me')
   updateMe(
     @Request() req: { user: RequestUser },
     @Body() dto: UpdateMyProfileDto,
-  ): Promise<AuthUserResponse> {
+  ): Promise<AuthUserResponseDto> {
     return this.authService.updateMe(req.user, dto);
   }
 }
