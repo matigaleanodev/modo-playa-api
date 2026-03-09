@@ -16,16 +16,6 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import {
-  ApiBody,
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
-  ApiParam,
-  ApiBearerAuth,
-  ApiConsumes,
-} from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 
@@ -49,15 +39,21 @@ import { LodgingResponseDto } from '@lodgings/dto/lodging-response.dto';
 import { LodgingMapper } from '@lodgings/mappers/lodgings.mapper';
 import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
 import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
-
 import {
-  LODGING_RESPONSE_EXAMPLE,
-  PAGINATED_LODGINGS_RESPONSE_EXAMPLE,
-  DELETE_LODGING_RESPONSE_EXAMPLE,
+  ApiAddOccupiedRangeDoc,
+  ApiAdminLodgingsController,
+  ApiCreateLodgingDoc,
+  ApiCreateLodgingWithImagesDoc,
+  ApiDeleteLodgingDoc,
+  ApiFindAdminLodgingByIdDoc,
+  ApiFindAllAdminLodgingsDoc,
+  ApiGetOccupiedRangesDoc,
+  ApiRemoveOccupiedRangeDoc,
+  ApiUpdateLodgingDoc,
+  ApiUpdateLodgingWithImagesDoc,
 } from '../swagger/lodgings-admin.swagger';
 
-@ApiTags('Admin - Lodgings')
-@ApiBearerAuth('access-token')
+@ApiAdminLodgingsController()
 @Controller('admin/lodgings')
 @UseGuards(JwtAuthGuard)
 export class LodgingsAdminController {
@@ -67,15 +63,7 @@ export class LodgingsAdminController {
     private readonly mediaUrlBuilder: MediaUrlBuilder,
   ) {}
 
-  @ApiOperation({
-    summary: 'Crear alojamiento',
-    description: 'Crea un nuevo alojamiento asociado al owner autenticado.',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Alojamiento creado correctamente',
-    schema: { example: LODGING_RESPONSE_EXAMPLE },
-  })
+  @ApiCreateLodgingDoc()
   @Post()
   async create(
     @Body() dto: CreateLodgingDto,
@@ -86,33 +74,7 @@ export class LodgingsAdminController {
     return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
-  @ApiOperation({
-    summary: 'Crear alojamiento con imágenes (flujo unificado)',
-    description:
-      'Crea un alojamiento y procesa imágenes en una sola transacción backend usando multipart/form-data.',
-  })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['payload'],
-      properties: {
-        payload: {
-          type: 'string',
-          description: 'JSON serializado con el CreateLodgingWithImagesDto',
-        },
-        images: {
-          type: 'array',
-          items: { type: 'string', format: 'binary' },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Alojamiento creado correctamente con imágenes procesadas',
-    schema: { example: LODGING_RESPONSE_EXAMPLE },
-  })
+  @ApiCreateLodgingWithImagesDoc()
   @Post('with-images')
   @UseInterceptors(FilesInterceptor('images', 5))
   async createWithImages(
@@ -132,28 +94,7 @@ export class LodgingsAdminController {
     return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
-  @ApiOperation({
-    summary: 'Listar alojamientos (admin)',
-    description:
-      'Devuelve alojamientos del owner autenticado. SUPERADMIN puede ver todos.',
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: Number,
-    description: 'Número de página',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: Number,
-    description: 'Cantidad de registros por página',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Listado paginado de alojamientos',
-    schema: { example: PAGINATED_LODGINGS_RESPONSE_EXAMPLE },
-  })
+  @ApiFindAllAdminLodgingsDoc()
   @Get()
   async findAll(
     @Query() query: AdminLodgingsQueryDto,
@@ -173,21 +114,7 @@ export class LodgingsAdminController {
     };
   }
 
-  @ApiOperation({
-    summary: 'Obtener alojamiento por ID (admin)',
-    description:
-      'Devuelve un alojamiento específico del owner. SUPERADMIN puede acceder a cualquiera.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    description: 'ID del alojamiento',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Alojamiento encontrado',
-    schema: { example: LODGING_RESPONSE_EXAMPLE },
-  })
+  @ApiFindAdminLodgingByIdDoc()
   @Get(':id')
   async findOne(
     @Param('id') id: string,
@@ -202,21 +129,7 @@ export class LodgingsAdminController {
     return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
-  @ApiOperation({
-    summary: 'Actualizar alojamiento',
-    description:
-      'Actualiza un alojamiento existente. Respeta reglas de owner y SUPERADMIN.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    description: 'ID del alojamiento',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Alojamiento actualizado',
-    schema: { example: LODGING_RESPONSE_EXAMPLE },
-  })
+  @ApiUpdateLodgingDoc()
   @Patch(':id')
   async update(
     @Param('id') id: string,
@@ -233,34 +146,7 @@ export class LodgingsAdminController {
     return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
-  @ApiOperation({
-    summary: 'Actualizar alojamiento con imágenes (flujo unificado)',
-    description:
-      'Actualiza el alojamiento y procesa nuevas imágenes en una sola llamada multipart/form-data.',
-  })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['payload'],
-      properties: {
-        payload: {
-          type: 'string',
-          description: 'JSON serializado con UpdateLodgingWithImagesDto',
-        },
-        images: {
-          type: 'array',
-          items: { type: 'string', format: 'binary' },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Alojamiento actualizado correctamente con imágenes procesadas',
-    schema: { example: LODGING_RESPONSE_EXAMPLE },
-  })
+  @ApiUpdateLodgingWithImagesDoc()
   @Patch(':id/with-images')
   @UseInterceptors(FilesInterceptor('images', 5))
   async updateWithImages(
@@ -282,20 +168,7 @@ export class LodgingsAdminController {
     return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
-  @ApiOperation({
-    summary: 'Obtener rangos ocupados del alojamiento',
-    description: 'Devuelve los rangos ocupados (availability) del alojamiento.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    description: 'ID del alojamiento',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Rangos ocupados encontrados',
-    type: [AvailabilityRangeDto],
-  })
+  @ApiGetOccupiedRangesDoc()
   @Get(':id/occupied-ranges')
   getOccupiedRanges(
     @Param('id') id: string,
@@ -308,21 +181,7 @@ export class LodgingsAdminController {
     );
   }
 
-  @ApiOperation({
-    summary: 'Agregar rango ocupado',
-    description:
-      'Agrega un rango ocupado normalizado a inicio del día y valida conflictos.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    description: 'ID del alojamiento',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Rango ocupado agregado',
-    type: [AvailabilityRangeDto],
-  })
+  @ApiAddOccupiedRangeDoc()
   @Post(':id/occupied-ranges')
   addOccupiedRange(
     @Param('id') id: string,
@@ -337,20 +196,7 @@ export class LodgingsAdminController {
     );
   }
 
-  @ApiOperation({
-    summary: 'Eliminar rango ocupado',
-    description: 'Elimina un rango ocupado exacto del alojamiento.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    description: 'ID del alojamiento',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Rango ocupado eliminado',
-    type: [AvailabilityRangeDto],
-  })
+  @ApiRemoveOccupiedRangeDoc()
   @Delete(':id/occupied-ranges')
   removeOccupiedRange(
     @Param('id') id: string,
@@ -365,21 +211,7 @@ export class LodgingsAdminController {
     );
   }
 
-  @ApiOperation({
-    summary: 'Eliminar alojamiento',
-    description:
-      'Realiza soft delete de un alojamiento. SUPERADMIN puede eliminar cualquier registro.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    description: 'ID del alojamiento',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Alojamiento eliminado',
-    schema: { example: DELETE_LODGING_RESPONSE_EXAMPLE },
-  })
+  @ApiDeleteLodgingDoc()
   @Delete(':id')
   remove(
     @Param('id') id: string,

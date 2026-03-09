@@ -12,13 +12,6 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import {
-  ApiBearerAuth,
-  ApiBody,
-  ApiConsumes,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
 import { UserProfileImagesService } from '@users/services/user-profile-images.service';
@@ -27,9 +20,15 @@ import { UserProfileImageUploadUrlResponseDto } from '@users/dto/user-profile-im
 import { ConfirmUserProfileImageDto } from '@users/dto/confirm-user-profile-image.dto';
 import { ConfirmUserProfileImageResponseDto } from '@users/dto/confirm-user-profile-image-response.dto';
 import { DeleteUserProfileImageResponseDto } from '@users/dto/delete-user-profile-image-response.dto';
+import {
+  ApiConfirmUserProfileUploadDoc,
+  ApiCreateUserProfileUploadUrlDoc,
+  ApiDeleteUserProfileImageDoc,
+  ApiUploadUserProfileImageDoc,
+  ApiUsersProfileImagesController,
+} from './users-profile-images.swagger';
 
-@ApiTags('Admin - Users Profile Images')
-@ApiBearerAuth('access-token')
+@ApiUsersProfileImagesController()
 @Controller('admin/users/:id/profile-image')
 @UseGuards(JwtAuthGuard)
 export class UsersProfileImagesController {
@@ -37,7 +36,7 @@ export class UsersProfileImagesController {
     private readonly userProfileImagesService: UserProfileImagesService,
   ) {}
 
-  @ApiOperation({ summary: 'Generar URL firmada para imagen de perfil' })
+  @ApiCreateUserProfileUploadUrlDoc()
   @Post('upload-url')
   createUploadUrl(
     @Param('id') userId: string,
@@ -51,19 +50,7 @@ export class UsersProfileImagesController {
     );
   }
 
-  @ApiOperation({
-    summary: 'Subir imagen de perfil directo al backend',
-  })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['file'],
-      properties: {
-        file: { type: 'string', format: 'binary' },
-      },
-    },
-  })
+  @ApiUploadUserProfileImageDoc()
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   upload(
@@ -83,7 +70,7 @@ export class UsersProfileImagesController {
     );
   }
 
-  @ApiOperation({ summary: 'Confirmar upload de imagen de perfil' })
+  @ApiConfirmUserProfileUploadDoc()
   @Post('confirm')
   confirmUpload(
     @Param('id') userId: string,
@@ -97,7 +84,7 @@ export class UsersProfileImagesController {
     );
   }
 
-  @ApiOperation({ summary: 'Eliminar imagen de perfil' })
+  @ApiDeleteUserProfileImageDoc()
   @Delete()
   deleteProfileImage(
     @Param('id') userId: string,

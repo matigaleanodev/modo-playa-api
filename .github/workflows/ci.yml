@@ -3,6 +3,7 @@ name: CI - Validate API
 on:
   pull_request:
     branches:
+      - dev
       - main
   workflow_dispatch:
 
@@ -46,3 +47,18 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Generate OpenAPI and Postman collection
+        run: npm run generate:postman
+
+      - name: Upload OpenAPI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: openapi.json
+
+      - name: Upload Postman collection artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-collection
+          path: postman-collection.json

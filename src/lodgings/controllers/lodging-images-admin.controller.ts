@@ -9,7 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
 import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
@@ -19,17 +18,21 @@ import { ConfirmLodgingImageDto } from '@lodgings/dto/confirm-lodging-image.dto'
 import { ConfirmLodgingImageResponseDto } from '@lodgings/dto/confirm-lodging-image-response.dto';
 import { SetDefaultLodgingImageResponseDto } from '@lodgings/dto/set-default-lodging-image-response.dto';
 import { DeleteLodgingImageResponseDto } from '@lodgings/dto/delete-lodging-image-response.dto';
+import {
+  ApiConfirmLodgingImageUploadDoc,
+  ApiCreateLodgingImageUploadUrlDoc,
+  ApiDeleteLodgingImageDoc,
+  ApiLodgingImagesAdminController,
+  ApiSetDefaultLodgingImageDoc,
+} from '../swagger/lodging-images-admin.swagger';
 
-@ApiTags('Admin - Lodgings Images')
-@ApiBearerAuth('access-token')
+@ApiLodgingImagesAdminController()
 @Controller('admin/lodgings/:lodgingId/images')
 @UseGuards(JwtAuthGuard)
 export class LodgingImagesAdminController {
   constructor(private readonly lodgingImagesService: LodgingImagesService) {}
 
-  @ApiOperation({
-    summary: 'Generar URL firmada para imagen de alojamiento',
-  })
+  @ApiCreateLodgingImageUploadUrlDoc()
   @Post('upload-url')
   createUploadUrl(
     @Param('lodgingId') lodgingId: string,
@@ -44,9 +47,7 @@ export class LodgingImagesAdminController {
     );
   }
 
-  @ApiOperation({
-    summary: 'Confirmar upload de imagen de alojamiento',
-  })
+  @ApiConfirmLodgingImageUploadDoc()
   @Post('confirm')
   confirmUpload(
     @Param('lodgingId') lodgingId: string,
@@ -61,9 +62,7 @@ export class LodgingImagesAdminController {
     );
   }
 
-  @ApiOperation({
-    summary: 'Marcar imagen predeterminada',
-  })
+  @ApiSetDefaultLodgingImageDoc()
   @Patch(':imageId/default')
   setDefault(
     @Param('lodgingId') lodgingId: string,
@@ -78,9 +77,7 @@ export class LodgingImagesAdminController {
     );
   }
 
-  @ApiOperation({
-    summary: 'Eliminar imagen de alojamiento',
-  })
+  @ApiDeleteLodgingImageDoc()
   @Delete(':imageId')
   delete(
     @Param('lodgingId') lodgingId: string,
