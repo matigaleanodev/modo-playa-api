@@ -1,63 +1,47 @@
-export const PUBLIC_LODGING_RESPONSE_EXAMPLE = {
-  id: '65f1c2d9a2b5c9f1a2b3c4d5',
-  title: 'Cabaña Frente al Mar',
-  description: 'Hermosa cabaña equipada para 4 personas.',
-  location: 'Villa Gesell',
-  city: 'Villa Gesell',
-  type: 'cabin',
-  price: 120000,
-  priceUnit: 'night',
-  maxGuests: 4,
-  bedrooms: 2,
-  bathrooms: 1,
-  minNights: 2,
-  distanceToBeach: 250,
-  amenities: ['wifi', 'parking'],
-  mainImage:
-    'https://media.example.com/lodgings/699c9b30436edbee481101be/244e45ae-bdb3-407b-adf2-ade015e1a5ef/original.webp',
-  images: [
-    'https://media.example.com/lodgings/699c9b30436edbee481101be/244e45ae-bdb3-407b-adf2-ade015e1a5ef/original.webp',
-  ],
-  mediaImages: [
-    {
-      imageId: '244e45ae-bdb3-407b-adf2-ade015e1a5ef',
-      key: 'lodgings/699c9b30436edbee481101be/244e45ae-bdb3-407b-adf2-ade015e1a5ef/original.webp',
-      isDefault: true,
-      width: 1920,
-      height: 1080,
-      bytes: 285311,
-      mime: 'image/webp',
-      createdAt: '2026-01-01T10:00:00.000Z',
-      url: 'https://media.example.com/lodgings/699c9b30436edbee481101be/244e45ae-bdb3-407b-adf2-ade015e1a5ef/original.webp',
-      variants: {
-        thumb:
-          'https://media.example.com/cdn-cgi/image/width=320,height=240,fit=cover,quality=80,format=auto/lodgings/699c9b30436edbee481101be/244e45ae-bdb3-407b-adf2-ade015e1a5ef/original.webp',
-        card: 'https://media.example.com/cdn-cgi/image/width=640,height=420,fit=cover,quality=82,format=auto/lodgings/699c9b30436edbee481101be/244e45ae-bdb3-407b-adf2-ade015e1a5ef/original.webp',
-        hero: 'https://media.example.com/cdn-cgi/image/width=1600,height=900,fit=cover,quality=85,format=auto/lodgings/699c9b30436edbee481101be/244e45ae-bdb3-407b-adf2-ade015e1a5ef/original.webp',
-      },
-    },
-  ],
-  occupiedRanges: [
-    {
-      from: '2026-01-10',
-      to: '2026-01-20',
-    },
-  ],
-  contactId: '699c9b30436edbee48110155',
-  contact: {
-    id: '699c9b30436edbee48110155',
-    name: 'Contacto principal',
-    email: 'contacto@modo-playa.com',
-    whatsapp: '+5492215550101',
-    isDefault: true,
-    active: true,
-    notes: 'Disponible de 9 a 20 hs',
-  },
-};
+import { applyDecorators } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { LodgingResponseDto } from '../dto/lodging-response.dto';
+import { ApiIdParam } from '../../swagger/decorators/api-id-param.decorator';
+import { ApiPaginatedOkResponse } from '../../swagger/decorators/api-paginated-response.decorator';
+import { ApiOkResponseWithType } from '../../swagger/decorators/api-response-with-type.decorator';
+import {
+  publicLodgingResponseExample,
+  publicLodgingsPaginatedResponseExample,
+} from '../../swagger/examples/lodgings.examples';
 
-export const PUBLIC_PAGINATED_RESPONSE_EXAMPLE = {
-  data: [PUBLIC_LODGING_RESPONSE_EXAMPLE],
-  total: 12,
-  page: 1,
-  limit: 10,
-};
+export function ApiPublicLodgingsController() {
+  return applyDecorators(ApiTags('Public - Lodgings'));
+}
+
+export function ApiFindAllPublicLodgingsDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Listar alojamientos publicos',
+      description:
+        'Devuelve alojamientos activos. Permite busqueda por texto y filtrado por tags.',
+    }),
+    ApiPaginatedOkResponse(LodgingResponseDto, {
+      description: 'Listado paginado de alojamientos publicos',
+      example: publicLodgingsPaginatedResponseExample,
+    }),
+  );
+}
+
+export function ApiFindPublicLodgingByIdDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Obtener alojamiento publico por ID',
+      description:
+        'Devuelve un alojamiento activo especifico. Si no esta activo, devuelve 404.',
+    }),
+    ApiIdParam('id', 'ID del alojamiento'),
+    ApiOkResponseWithType(LodgingResponseDto, {
+      description: 'Alojamiento encontrado',
+      example: publicLodgingResponseExample,
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Alojamiento no encontrado',
+    }),
+  );
+}
