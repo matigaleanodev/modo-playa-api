@@ -20,7 +20,7 @@ export function ApiCreateMyProfileImageUploadUrlDoc() {
     ApiOperation({
       summary: 'Generar URL firmada para imagen de perfil propia',
       description:
-        'Reserva un upload pendiente para la imagen de perfil del usuario autenticado.',
+        'Reserva un upload pendiente para la imagen de perfil del usuario autenticado. Disponible solo para usuarios OWNER.',
     }),
     ApiCreatedResponseWithType(UserProfileImageUploadUrlResponseDto, {
       description: 'URL firmada generada correctamente',
@@ -33,7 +33,7 @@ export function ApiConfirmMyProfileImageUploadDoc() {
     ApiOperation({
       summary: 'Confirmar imagen de perfil propia',
       description:
-        'Confirma el upload firmado de la imagen de perfil del usuario autenticado y reemplaza la imagen previa si existe.',
+        'Confirma el upload firmado de la imagen de perfil del usuario autenticado y reemplaza la imagen previa si existe. Disponible solo para usuarios OWNER.',
     }),
     ApiOkResponseWithType(ConfirmUserProfileImageResponseDto, {
       description: 'Imagen de perfil confirmada correctamente',
@@ -45,6 +45,8 @@ export function ApiDeleteMyProfileImageDoc() {
   return applyDecorators(
     ApiOperation({
       summary: 'Eliminar imagen de perfil propia',
+      description:
+        'Elimina la imagen de perfil del usuario autenticado. Disponible solo para usuarios OWNER.',
     }),
     ApiOkResponseWithType(DeleteUserProfileImageResponseDto, {
       description: 'Imagen de perfil eliminada correctamente',

@@ -3,6 +3,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { ContactsService } from './contacts.service';
 import { Contact } from './schemas/contact.schema';
 import { DomainException } from '@common/exceptions/domain.exception';
+import { ERROR_CODES } from '@common/constants/error-code';
 import { Types } from 'mongoose';
 
 class FakeContactModel {
@@ -125,6 +126,21 @@ describe('ContactsService', () => {
     >;
     const [filters] = findCalls[0];
     expect(filters.ownerId.toString()).toBe(ownerId);
+  });
+
+  it('debe devolver codigo explicito si ownerId es invalido al listar', async () => {
+    await expect(
+      service.findAll(
+        { includeInactive: false, page: 1, limit: 10 },
+        'invalid-owner-id',
+        'OWNER',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        message: 'Invalid owner id',
+        code: ERROR_CODES.INVALID_OWNER_ID,
+      },
+    });
   });
 
   // -------------------------

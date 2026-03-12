@@ -178,7 +178,7 @@ export class LodgingsService {
       .findOne({
         _id: toObjectIdOrThrow(id, {
           message: 'Invalid lodging id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_LODGING_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         active: true,
@@ -204,7 +204,7 @@ export class LodgingsService {
     const { page = 1, limit = 10, includeInactive = true } = query;
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
 
@@ -239,7 +239,7 @@ export class LodgingsService {
     const filters: QueryFilter<LodgingDocument> = {
       _id: toObjectIdOrThrow(id, {
         message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -247,7 +247,7 @@ export class LodgingsService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -283,12 +283,12 @@ export class LodgingsService {
 
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
     const lodgingObjectId = toObjectIdOrThrow(id, {
       message: 'Invalid lodging id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_LODGING_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
 
@@ -330,7 +330,7 @@ export class LodgingsService {
     const filters: QueryFilter<LodgingDocument> = {
       _id: toObjectIdOrThrow(id, {
         message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -338,7 +338,7 @@ export class LodgingsService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -435,7 +435,7 @@ export class LodgingsService {
       if (!Types.ObjectId.isValid(contactId)) {
         throw new DomainException(
           'Invalid contact id',
-          ERROR_CODES.INVALID_OBJECT_ID,
+          ERROR_CODES.INVALID_CONTACT_ID,
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -567,7 +567,7 @@ export class LodgingsService {
 
     return toObjectIdOrThrow(effectiveOwnerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
   }

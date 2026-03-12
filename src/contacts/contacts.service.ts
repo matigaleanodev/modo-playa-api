@@ -71,7 +71,11 @@ export class ContactsService {
     }
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const [data, total] = await Promise.all([
@@ -106,7 +110,11 @@ export class ContactsService {
     }
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const contact = await this.contactModel.findOne(filters);
@@ -137,7 +145,11 @@ export class ContactsService {
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const existing = await this.contactModel.findOne(filters);
@@ -203,7 +215,11 @@ export class ContactsService {
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const contact = await this.contactModel.findOne(filters);
@@ -240,7 +256,7 @@ export class ContactsService {
 
     return toObjectIdOrThrow(effectiveOwnerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
   }

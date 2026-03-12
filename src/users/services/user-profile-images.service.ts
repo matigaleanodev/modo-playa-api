@@ -62,12 +62,12 @@ export class UserProfileImagesService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         ownerId: toObjectIdOrThrow(ownerId, {
           message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -212,12 +212,12 @@ export class UserProfileImagesService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         ownerId: toObjectIdOrThrow(ownerId, {
           message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         'pendingProfileImageUploads.imageId': dto.imageId,
@@ -289,12 +289,12 @@ export class UserProfileImagesService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         ownerId: toObjectIdOrThrow(ownerId, {
           message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -316,12 +316,12 @@ export class UserProfileImagesService {
     const user = await this.userModel.findOne({
       _id: toObjectIdOrThrow(userId, {
         message: 'Invalid user id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_USER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
       ownerId: toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     });

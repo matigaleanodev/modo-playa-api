@@ -156,7 +156,12 @@ describe('LodgingsService', () => {
     it('debe lanzar error si id inválido', async () => {
       await expect(
         service.update('invalid-id', {}, ownerId, 'OWNER'),
-      ).rejects.toThrow(DomainException);
+      ).rejects.toMatchObject({
+        response: {
+          message: 'Invalid lodging id',
+          code: ERROR_CODES.INVALID_LODGING_ID,
+        },
+      });
     });
 
     it('debe rechazar occupiedRanges en patch general', async () => {

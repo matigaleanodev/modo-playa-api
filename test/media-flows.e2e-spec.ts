@@ -107,6 +107,7 @@ describe('Media flows (e2e)', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    authenticatedUser.role = 'SUPERADMIN';
   });
 
   afterAll(async () => {
@@ -330,6 +331,7 @@ describe('Media flows (e2e)', () => {
   });
 
   it('POST /api/auth/me/profile-image/upload-url usa el usuario autenticado', async () => {
+    authenticatedUser.role = 'OWNER';
     mockUserProfileImagesService.createUploadUrl.mockResolvedValue({
       imageId: 'profile-1',
       uploadKey: 'users/u/profile/profile-1/staging-upload',
@@ -358,6 +360,7 @@ describe('Media flows (e2e)', () => {
   });
 
   it('POST /api/auth/me/profile-image/upload-url valida payload requerido', async () => {
+    authenticatedUser.role = 'OWNER';
     await request(app.getHttpServer())
       .post('/api/auth/me/profile-image/upload-url')
       .send({
@@ -373,6 +376,7 @@ describe('Media flows (e2e)', () => {
   });
 
   it('POST /api/auth/me/profile-image/confirm confirma la imagen propia', async () => {
+    authenticatedUser.role = 'OWNER';
     mockUserProfileImagesService.confirmUpload.mockResolvedValue({
       image: {
         imageId: 'profile-1',
@@ -409,6 +413,7 @@ describe('Media flows (e2e)', () => {
   });
 
   it('POST /api/auth/me/profile-image/confirm devuelve error de dominio si el pending expira', async () => {
+    authenticatedUser.role = 'OWNER';
     mockUserProfileImagesService.confirmUpload.mockRejectedValue(
       new DomainException(
         'Pending profile image upload expired',
@@ -431,6 +436,7 @@ describe('Media flows (e2e)', () => {
   });
 
   it('DELETE /api/auth/me/profile-image elimina la imagen propia', async () => {
+    authenticatedUser.role = 'OWNER';
     mockUserProfileImagesService.deleteProfileImage.mockResolvedValue({
       deleted: true,
     });
@@ -443,5 +449,23 @@ describe('Media flows (e2e)', () => {
     expect(
       mockUserProfileImagesService.deleteProfileImage,
     ).toHaveBeenCalledWith(authenticatedUser.ownerId, authenticatedUser.userId);
+  });
+
+  it('POST /api/auth/me/profile-image/upload-url rechaza a SUPERADMIN aunque sea su propio usuario', async () => {
+    authenticatedUser.role = 'SUPERADMIN';
+
+    await request(app.getHttpServer())
+      .post('/api/auth/me/profile-image/upload-url')
+      .send({
+        mime: 'image/webp',
+        size: 2048,
+      })
+      .expect(403)
+      .expect({
+        message: 'SUPERADMIN cannot manage profile images',
+        code: ERROR_CODES.PROFILE_IMAGE_FORBIDDEN_FOR_SUPERADMIN,
+      });
+
+    expect(mockUserProfileImagesService.createUploadUrl).not.toHaveBeenCalled();
   });
 });

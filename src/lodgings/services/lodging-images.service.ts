@@ -62,7 +62,7 @@ export class LodgingImagesService {
 
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
 
@@ -544,7 +544,7 @@ export class LodgingImagesService {
 
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
 
@@ -726,7 +726,7 @@ export class LodgingImagesService {
     const filters: QueryFilter<LodgingDocument> = {
       _id: toObjectIdOrThrow(lodgingId, {
         message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -734,7 +734,7 @@ export class LodgingImagesService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -776,7 +776,7 @@ export class LodgingImagesService {
     const filters: Record<string, unknown> = {
       _id: toObjectIdOrThrow(lodgingId, {
         message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -784,7 +784,7 @@ export class LodgingImagesService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -810,7 +810,7 @@ export class LodgingImagesService {
     const pending = await this.pendingDraftUploadModel.findOne({
       ownerId: toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
       uploadSessionId,

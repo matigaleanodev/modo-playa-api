@@ -146,6 +146,16 @@ describe('UserProfileImagesService', () => {
     );
   });
 
+  it('debe devolver codigo explicito si userId es invalido', async () => {
+    await expectDomainCode(
+      service.createUploadUrl(ownerId, 'invalid-user-id', {
+        mime: 'image/png',
+        size: 100,
+      }),
+      ERROR_CODES.INVALID_USER_ID,
+    );
+  });
+
   it('debe devolver la imagen existente sin duplicar metadata al reintentar confirm', async () => {
     const existingImage: ProfileImage = {
       imageId: 'img-1',

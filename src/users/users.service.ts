@@ -95,7 +95,7 @@ export class UsersService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -124,7 +124,7 @@ export class UsersService {
     } = {
       _id: toObjectIdOrThrow(userId, {
         message: 'Invalid user id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_USER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -132,7 +132,7 @@ export class UsersService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -162,7 +162,7 @@ export class UsersService {
     } = {
       _id: toObjectIdOrThrow(userId, {
         message: 'Invalid user id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_USER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -170,7 +170,7 @@ export class UsersService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -197,12 +197,12 @@ export class UsersService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         ownerId: toObjectIdOrThrow(ownerId, {
           message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -223,12 +223,12 @@ export class UsersService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         ownerId: toObjectIdOrThrow(ownerId, {
           message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -248,7 +248,7 @@ export class UsersService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -265,7 +265,7 @@ export class UsersService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -278,7 +278,7 @@ export class UsersService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -300,7 +300,7 @@ export class UsersService {
 
     return toObjectIdOrThrow(effectiveOwnerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
   }
