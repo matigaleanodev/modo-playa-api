@@ -9,6 +9,7 @@ import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '@users/users.module';
 import { MailModule } from '@mail/mail.module';
 import { MediaModule } from '@media/media.module';
+import { AuthProfileImageController } from './auth-profile-image.controller';
 
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { MediaModule } from '@media/media.module';
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AuthProfileImageController],
   providers: [AuthService, JwtStrategy, JwtAuthGuard],
   exports: [JwtAuthGuard],
 })

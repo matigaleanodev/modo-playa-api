@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
-import { PassThrough, Readable } from 'stream';
+import { PassThrough } from 'stream';
 import { pipeline } from 'stream/promises';
 import { ERROR_CODES } from '@common/constants/error-code';
 import { DomainException } from '@common/exceptions/domain.exception';
@@ -289,104 +289,6 @@ export class UserProfileImagesService {
     );
 
     return { deleted: true };
-  }
-
-  async uploadProfileImage(
-    ownerId: string,
-    userId: string,
-    file: { buffer: Buffer; mimetype: string; size: number },
-  ): Promise<ConfirmUserProfileImageResponseDto> {
-    this.assertAllowedMime(file.mimetype);
-    this.assertSizeWithinLimit(file.size, this.getUserProfileMaxBytes());
-
-    const user = await this.findOwnedUserOrThrow(ownerId, userId);
-    const currentProfileImage = user.profileImage;
-    const imageId = randomUUID();
-    const finalKey = this.buildFinalKey(userId, imageId);
-    const handle = this.imageProcessor.createLodgingNormalizerTransform({
-      maxWidth: this.getUserProfileMaxWidth(),
-      maxHeight: this.getUserProfileMaxHeight(),
-      outputFormat: 'webp',
-      quality: 84,
-    });
-    const output = new PassThrough();
-    const uploadPromise = this.storage.putObject({
-      key: finalKey,
-      body: output,
-      contentType: 'image/webp',
-      cacheControl: 'public, max-age=31536000, immutable',
-    });
-
-    try {
-      await Promise.all([
-        uploadPromise,
-        pipeline(
-          Readable.from(file.buffer) as NodeJS.ReadableStream,
-          handle.transform as NodeJS.WritableStream,
-          output,
-        ),
-      ]);
-    } catch (error) {
-      try {
-        await this.storage.deleteObject(finalKey);
-      } catch {
-        // best effort
-      }
-      throw error;
-    }
-
-    const metadata = await handle.getMetadata();
-    const profileImage = {
-      imageId,
-      key: finalKey,
-      width: metadata.width,
-      height: metadata.height,
-      bytes: metadata.bytes,
-      mime: metadata.mime,
-      createdAt: new Date(),
-    };
-
-    const updated = await this.userModel.findOneAndUpdate(
-      {
-        _id: toObjectIdOrThrow(userId, {
-          message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-          httpStatus: HttpStatus.BAD_REQUEST,
-        }),
-        ownerId: toObjectIdOrThrow(ownerId, {
-          message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-          httpStatus: HttpStatus.BAD_REQUEST,
-        }),
-      },
-      {
-        $set: {
-          profileImage,
-          avatarUrl: this.mediaUrlBuilder.buildPublicUrl(finalKey),
-        },
-      },
-      { returnDocument: 'after' },
-    );
-
-    if (!updated?.profileImage) {
-      throw new DomainException(
-        'No se pudo actualizar la imagen de perfil',
-        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    if (currentProfileImage?.key && currentProfileImage.key !== finalKey) {
-      try {
-        await this.storage.deleteObject(currentProfileImage.key);
-      } catch {
-        // best effort
-      }
-    }
-
-    return {
-      image: this.toProfileImageResponse(updated.profileImage),
-    };
   }
 
   private async findOwnedUserOrThrow(

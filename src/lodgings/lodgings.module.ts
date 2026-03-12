@@ -9,6 +9,11 @@ import { MediaModule } from '@media/media.module';
 import { LodgingImagesAdminController } from './controllers/lodging-images-admin.controller';
 import { LodgingImagesService } from './services/lodging-images.service';
 import { LodgingImagesPolicyService } from './domain/lodging-images-policy.service';
+import {
+  PendingLodgingDraftImageUpload,
+  PendingLodgingDraftImageUploadSchema,
+} from './schemas/pending-lodging-draft-image-upload.schema';
+import { LodgingDraftImageUploadsAdminController } from './controllers/lodging-draft-image-uploads.controller';
 
 @Module({
   imports: [
@@ -16,12 +21,17 @@ import { LodgingImagesPolicyService } from './domain/lodging-images-policy.servi
     MongooseModule.forFeature([
       { name: Lodging.name, schema: LodgingSchema },
       { name: Contact.name, schema: ContactSchema },
+      {
+        name: PendingLodgingDraftImageUpload.name,
+        schema: PendingLodgingDraftImageUploadSchema,
+      },
     ]),
   ],
   controllers: [
     LodgingsAdminController,
     LodgingsPublicController,
     LodgingImagesAdminController,
+    LodgingDraftImageUploadsAdminController,
   ],
   providers: [
     LodgingsService,

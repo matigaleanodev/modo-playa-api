@@ -542,9 +542,11 @@ export class AuthService {
   }
 
   private resolveUserRole(user: UserDocument): 'OWNER' | 'SUPERADMIN' {
-    const superadminId = this.configService.get<string>('SUPERADMIN_ID');
+    const superadminOwnerId = this.configService.get<string>(
+      'SUPERADMIN_OWNER_ID',
+    );
 
-    if (superadminId && user._id.toString() === superadminId) {
+    if (superadminOwnerId && user.ownerId.toString() === superadminOwnerId) {
       return 'SUPERADMIN';
     }
 

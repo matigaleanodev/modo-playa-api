@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { LodgingsService } from './lodgings.service';
-import { Lodging, LodgingDocument } from './schemas/lodging.schema';
+import { Lodging } from './schemas/lodging.schema';
 import { Contact } from '@contacts/schemas/contact.schema';
 import { DomainException } from '@common/exceptions/domain.exception';
 import { Types } from 'mongoose';
@@ -27,7 +27,7 @@ describe('LodgingsService', () => {
   };
 
   const mockLodgingImagesService = {
-    attachUploadedFiles: jest.fn(),
+    attachDraftUploadsToLodging: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -53,7 +53,9 @@ describe('LodgingsService', () => {
     }).compile();
 
     service = module.get<LodgingsService>(LodgingsService);
-    mockLodgingImagesService.attachUploadedFiles.mockResolvedValue(undefined);
+    mockLodgingImagesService.attachDraftUploadsToLodging.mockResolvedValue(
+      undefined,
+    );
   });
 
   afterEach(() => {
@@ -144,149 +146,6 @@ describe('LodgingsService', () => {
       await expect(
         service.update(lodgingId, invalidUpdateDto, ownerId, 'OWNER'),
       ).rejects.toThrow(DomainException);
-    });
-  });
-
-  describe('createWithImages', () => {
-    it('debe rechazar creación sin imagen principal ni archivos', async () => {
-      await expect(
-        service.createWithImages(
-          {
-            title: 'L',
-            description: 'D',
-            location: 'Loc',
-            city: 'City',
-            type: 'house',
-            price: 10,
-            priceUnit: 'night',
-            maxGuests: 2,
-            bedrooms: 1,
-            bathrooms: 1,
-            minNights: 1,
-          },
-          [],
-          ownerId,
-          'OWNER',
-        ),
-      ).rejects.toThrow(DomainException);
-    });
-
-    it('debe crear y devolver sin adjuntar archivos cuando no hay imágenes nuevas', async () => {
-      const created = {
-        _id: new Types.ObjectId(),
-      } as unknown as LodgingDocument;
-      const spyCreate = jest
-        .spyOn(service, 'create')
-        .mockResolvedValue(created);
-
-      const result = await service.createWithImages(
-        {
-          title: 'L',
-          description: 'D',
-          location: 'Loc',
-          city: 'City',
-          type: 'house',
-          price: 10,
-          priceUnit: 'night',
-          maxGuests: 2,
-          bedrooms: 1,
-          bathrooms: 1,
-          minNights: 1,
-          mainImage: 'https://img',
-        },
-        [],
-        ownerId,
-        'OWNER',
-      );
-
-      expect(spyCreate).toHaveBeenCalled();
-      expect(
-        mockLodgingImagesService.attachUploadedFiles,
-      ).not.toHaveBeenCalled();
-      expect(result).toBe(created);
-    });
-
-    it('debe hacer rollback del lodging si falla attachUploadedFiles', async () => {
-      const created = {
-        _id: new Types.ObjectId(),
-      } as unknown as LodgingDocument;
-      jest.spyOn(service, 'create').mockResolvedValue(created);
-      mockLodgingImagesService.attachUploadedFiles.mockRejectedValue(
-        new Error('boom'),
-      );
-
-      await expect(
-        service.createWithImages(
-          {
-            title: 'L',
-            description: 'D',
-            location: 'Loc',
-            city: 'City',
-            type: 'house',
-            price: 10,
-            priceUnit: 'night',
-            maxGuests: 2,
-            bedrooms: 1,
-            bathrooms: 1,
-            minNights: 1,
-          },
-          [{ buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 }],
-          ownerId,
-          'OWNER',
-        ),
-      ).rejects.toThrow('boom');
-
-      expect(mockLodgingModel.deleteOne).toHaveBeenCalledWith({
-        _id: created._id,
-      });
-    });
-  });
-
-  describe('updateWithImages', () => {
-    it('debe actualizar y retornar findAdminById cuando no hay archivos nuevos', async () => {
-      const updated = { _id: 'x' } as unknown as LodgingDocument;
-      const spyUpdate = jest
-        .spyOn(service, 'update')
-        .mockResolvedValue(updated);
-      const spyFind = jest
-        .spyOn(service, 'findAdminById')
-        .mockResolvedValue(updated);
-
-      const result = await service.updateWithImages(
-        lodgingId,
-        { title: 'Nuevo' },
-        [],
-        ownerId,
-        'OWNER',
-      );
-
-      expect(spyUpdate).toHaveBeenCalled();
-      expect(
-        mockLodgingImagesService.attachUploadedFiles,
-      ).not.toHaveBeenCalled();
-      expect(spyFind).toHaveBeenCalledWith(lodgingId, ownerId, 'OWNER');
-      expect(result).toBe(updated);
-    });
-
-    it('debe adjuntar archivos nuevos tras actualizar', async () => {
-      const updated = { _id: 'x' } as unknown as LodgingDocument;
-      jest.spyOn(service, 'update').mockResolvedValue(updated);
-      jest.spyOn(service, 'findAdminById').mockResolvedValue(updated);
-
-      await service.updateWithImages(
-        lodgingId,
-        { title: 'Nuevo' },
-        [{ buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 }],
-        ownerId,
-        'OWNER',
-      );
-
-      expect(mockLodgingImagesService.attachUploadedFiles).toHaveBeenCalledWith(
-        lodgingId,
-        [{ buffer: Buffer.from('x'), mimetype: 'image/png', size: 1 }],
-        ownerId,
-        'OWNER',
-      );
     });
   });
 

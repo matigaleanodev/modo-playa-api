@@ -1,34 +1,19 @@
 import {
-  BadRequestException,
+  Body,
   Controller,
+  Delete,
   Get,
   Inject,
-  Post,
-  Body,
-  Patch,
   Param,
-  Delete,
+  Patch,
+  Post,
   Query,
-  UseGuards,
   Req,
-  UploadedFiles,
-  UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { FilesInterceptor } from '@nestjs/platform-express';
-import { plainToInstance } from 'class-transformer';
-import { validateSync } from 'class-validator';
-
 import { LodgingsService } from '../lodgings.service';
 import { CreateLodgingDto } from '../dto/create-lodging.dto';
-import {
-  CreateLodgingMultipartBodyDto,
-  CreateLodgingWithImagesDto,
-} from '../dto/create-lodging-with-images.dto';
-import {
-  UpdateLodgingMultipartBodyDto,
-  UpdateLodgingWithImagesDto,
-} from '../dto/update-lodging-with-images.dto';
 import { UpdateLodgingDto } from '../dto/update-lodging.dto';
 import { AvailabilityRangeDto } from '../dto/availability-range.dto';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
@@ -43,14 +28,12 @@ import {
   ApiAddOccupiedRangeDoc,
   ApiAdminLodgingsController,
   ApiCreateLodgingDoc,
-  ApiCreateLodgingWithImagesDoc,
   ApiDeleteLodgingDoc,
   ApiFindAdminLodgingByIdDoc,
   ApiFindAllAdminLodgingsDoc,
   ApiGetOccupiedRangesDoc,
   ApiRemoveOccupiedRangeDoc,
   ApiUpdateLodgingDoc,
-  ApiUpdateLodgingWithImagesDoc,
 } from '../swagger/lodgings-admin.swagger';
 
 @ApiAdminLodgingsController()
@@ -69,24 +52,8 @@ export class LodgingsAdminController {
     @Body() dto: CreateLodgingDto,
     @Req() req: Request & { user: RequestUser },
   ): Promise<LodgingResponseDto> {
-    const lodging = await this.lodgingsService.create(dto, req.user.ownerId);
-
-    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
-  }
-
-  @ApiCreateLodgingWithImagesDoc()
-  @Post('with-images')
-  @UseInterceptors(FilesInterceptor('images', 5))
-  async createWithImages(
-    @Body() body: CreateLodgingMultipartBodyDto,
-    @UploadedFiles()
-    files: Array<{ buffer: Buffer; mimetype: string; size: number }>,
-    @Req() req: Request & { user: RequestUser },
-  ): Promise<LodgingResponseDto> {
-    const dto = this.parseMultipartPayload(body.payload);
-    const lodging = await this.lodgingsService.createWithImages(
+    const lodging = await this.lodgingsService.create(
       dto,
-      files,
       req.user.ownerId,
       req.user.role,
     );
@@ -146,28 +113,6 @@ export class LodgingsAdminController {
     return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
   }
 
-  @ApiUpdateLodgingWithImagesDoc()
-  @Patch(':id/with-images')
-  @UseInterceptors(FilesInterceptor('images', 5))
-  async updateWithImages(
-    @Param('id') id: string,
-    @Body() body: UpdateLodgingMultipartBodyDto,
-    @UploadedFiles()
-    files: Array<{ buffer: Buffer; mimetype: string; size: number }>,
-    @Req() req: Request & { user: RequestUser },
-  ): Promise<LodgingResponseDto> {
-    const dto = this.parseMultipartUpdatePayload(body.payload);
-    const lodging = await this.lodgingsService.updateWithImages(
-      id,
-      dto,
-      files,
-      req.user.ownerId,
-      req.user.role,
-    );
-
-    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
-  }
-
   @ApiGetOccupiedRangesDoc()
   @Get(':id/occupied-ranges')
   getOccupiedRanges(
@@ -218,49 +163,5 @@ export class LodgingsAdminController {
     @Req() req: Request & { user: RequestUser },
   ): Promise<{ deleted: boolean }> {
     return this.lodgingsService.remove(id, req.user.ownerId, req.user.role);
-  }
-
-  private parseMultipartPayload(payload: string): CreateLodgingWithImagesDto {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(payload);
-    } catch {
-      throw new BadRequestException('Invalid payload JSON');
-    }
-
-    const dto = plainToInstance(CreateLodgingWithImagesDto, parsed);
-    const errors = validateSync(dto, {
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    });
-
-    if (errors.length > 0) {
-      throw new BadRequestException(errors);
-    }
-
-    return dto;
-  }
-
-  private parseMultipartUpdatePayload(
-    payload: string,
-  ): UpdateLodgingWithImagesDto {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(payload);
-    } catch {
-      throw new BadRequestException('Invalid payload JSON');
-    }
-
-    const dto = plainToInstance(UpdateLodgingWithImagesDto, parsed);
-    const errors = validateSync(dto, {
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    });
-
-    if (errors.length > 0) {
-      throw new BadRequestException(errors);
-    }
-
-    return dto;
   }
 }

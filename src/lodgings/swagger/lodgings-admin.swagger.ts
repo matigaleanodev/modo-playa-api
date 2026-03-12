@@ -9,7 +9,6 @@ import {
 import { AvailabilityRangeDto } from '../dto/availability-range.dto';
 import { LodgingResponseDto } from '../dto/lodging-response.dto';
 import { ApiIdParam } from '../../swagger/decorators/api-id-param.decorator';
-import { ApiJsonPayloadFilesBody } from '../../swagger/decorators/api-json-payload-files-body.decorator';
 import { ApiPaginatedOkResponse } from '../../swagger/decorators/api-paginated-response.decorator';
 import {
   ApiCreatedResponseWithType,
@@ -32,27 +31,11 @@ export function ApiCreateLodgingDoc() {
   return applyDecorators(
     ApiOperation({
       summary: 'Crear alojamiento',
-      description: 'Crea un nuevo alojamiento asociado al owner autenticado.',
+      description:
+        'Crea un nuevo alojamiento asociado al owner autenticado o al targetOwnerId cuando opera SUPERADMIN.',
     }),
     ApiCreatedResponseWithType(LodgingResponseDto, {
       description: 'Alojamiento creado correctamente',
-      example: lodgingResponseExample,
-    }),
-  );
-}
-
-export function ApiCreateLodgingWithImagesDoc() {
-  return applyDecorators(
-    ApiOperation({
-      summary: 'Crear alojamiento con imagenes (flujo unificado)',
-      description:
-        'Crea un alojamiento y procesa imagenes en una sola transaccion backend usando multipart/form-data.',
-    }),
-    ApiJsonPayloadFilesBody(
-      'JSON serializado con el CreateLodgingWithImagesDto',
-    ),
-    ApiCreatedResponseWithType(LodgingResponseDto, {
-      description: 'Alojamiento creado correctamente con imagenes procesadas',
       example: lodgingResponseExample,
     }),
   );
@@ -97,22 +80,6 @@ export function ApiUpdateLodgingDoc() {
     ApiIdParam('id', 'ID del alojamiento'),
     ApiOkResponseWithType(LodgingResponseDto, {
       description: 'Alojamiento actualizado',
-      example: lodgingResponseExample,
-    }),
-  );
-}
-
-export function ApiUpdateLodgingWithImagesDoc() {
-  return applyDecorators(
-    ApiOperation({
-      summary: 'Actualizar alojamiento con imagenes (flujo unificado)',
-      description:
-        'Actualiza el alojamiento y procesa nuevas imagenes en una sola llamada multipart/form-data.',
-    }),
-    ApiJsonPayloadFilesBody('JSON serializado con UpdateLodgingWithImagesDto'),
-    ApiOkResponseWithType(LodgingResponseDto, {
-      description:
-        'Alojamiento actualizado correctamente con imagenes procesadas',
       example: lodgingResponseExample,
     }),
   );

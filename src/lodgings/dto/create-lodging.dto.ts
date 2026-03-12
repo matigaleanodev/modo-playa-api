@@ -89,11 +89,12 @@ export class CreateLodgingDto {
   @IsOptional()
   amenities?: LodgingAmenity[];
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'https://cdn.modo-playa.com/lodgings/cabana-1/main.jpg',
   })
   @IsUrl()
-  mainImage!: string;
+  @IsOptional()
+  mainImage?: string;
 
   @ApiPropertyOptional({
     type: [String],
@@ -133,4 +134,33 @@ export class CreateLodgingDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['8d0eceb4-c871-4510-aa3b-fdbba4070030'],
+    description:
+      'IDs de imagenes pendientes ya confirmadas para asociar al lodging durante el alta.',
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  pendingImageIds?: string[];
+
+  @ApiPropertyOptional({
+    example: 'draft-lodging-01',
+    description:
+      'Identificador del flujo de alta usado para agrupar uploads pendientes del formulario.',
+  })
+  @IsString()
+  @IsOptional()
+  uploadSessionId?: string;
+
+  @ApiPropertyOptional({
+    example: '665c1234abc123456789abce',
+    description:
+      'Owner objetivo cuando un SUPERADMIN crea el lodging en nombre de otro tenant.',
+  })
+  @IsMongoId()
+  @IsOptional()
+  targetOwnerId?: string;
 }
