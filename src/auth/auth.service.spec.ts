@@ -30,7 +30,7 @@ describe('AuthService', () => {
   const mockConfigService = {
     get: jest.fn((key: string) => {
       if (key === 'BCRYPT_ROUNDS') return 10;
-      if (key === 'SUPERADMIN_ID') return null;
+      if (key === 'SUPERADMIN_OWNER_ID') return null;
       return null;
     }),
   };

@@ -94,6 +94,29 @@ describe('UsersService', () => {
     expect(result).toBeDefined();
   });
 
+  it('SUPERADMIN puede crear en nombre de targetOwnerId', async () => {
+    const targetOwnerId = new Types.ObjectId().toString();
+    userModelMock.countDocuments.mockResolvedValue(10);
+    userModelMock.findOne.mockResolvedValue(null);
+
+    await service.createUser(ownerId, 'SUPERADMIN', {
+      email: 'support@mail.com',
+      username: 'support',
+      targetOwnerId,
+    });
+
+    const constructorCalls = (
+      userModelMock as unknown as {
+        mock: { calls: Array<Array<unknown>> };
+      }
+    ).mock.calls;
+    const constructorCall = constructorCalls[0][0] as {
+      ownerId: Types.ObjectId;
+    };
+
+    expect(constructorCall.ownerId.toString()).toBe(targetOwnerId);
+  });
+
   it('debe lanzar error si ya existe usuario con mismo email o username', async () => {
     userModelMock.countDocuments.mockResolvedValue(1);
     userModelMock.findOne.mockResolvedValue({});
@@ -124,7 +147,7 @@ describe('UsersService', () => {
       exec: jest.fn().mockResolvedValue(0),
     });
 
-    const result = await service.findAllByOwner(ownerId, {
+    const result = await service.findAllByScope(ownerId, 'OWNER', {
       page: 1,
       limit: 10,
     });
@@ -147,9 +170,26 @@ describe('UsersService', () => {
     const result = await service.findById(
       ownerId,
       new Types.ObjectId().toString(),
+      'OWNER',
     );
 
     expect(result).toBeDefined();
+  });
+
+  it('SUPERADMIN puede buscar por id sin filtro por ownerId', async () => {
+    const userId = new Types.ObjectId().toString();
+    userModelMock.findOne.mockResolvedValue({ _id: userId });
+
+    await service.findById(ownerId, userId, 'SUPERADMIN');
+
+    const findOneCalls = userModelMock.findOne.mock.calls as Array<[unknown]>;
+    const filters = findOneCalls[0][0] as {
+      _id: Types.ObjectId;
+      ownerId?: Types.ObjectId;
+    };
+
+    expect(filters._id).toBeInstanceOf(Types.ObjectId);
+    expect(filters.ownerId).toBeUndefined();
   });
 
   // -------------------------
@@ -167,6 +207,7 @@ describe('UsersService', () => {
       {
         firstName: 'Juan',
       },
+      'OWNER',
     );
 
     expect(result.firstName).toBe('Juan');
@@ -176,8 +217,60 @@ describe('UsersService', () => {
     userModelMock.findOneAndUpdate.mockResolvedValue(null);
 
     await expect(
-      service.updateUser(ownerId, new Types.ObjectId().toString(), {}),
+      service.updateUser(ownerId, new Types.ObjectId().toString(), {}, 'OWNER'),
     ).rejects.toBeInstanceOf(DomainException);
+  });
+
+  it('SUPERADMIN puede actualizar sin filtro por ownerId', async () => {
+    const userId = new Types.ObjectId().toString();
+    userModelMock.findOneAndUpdate.mockResolvedValue({
+      firstName: 'Support',
+    });
+
+    await service.updateUser(
+      ownerId,
+      userId,
+      { firstName: 'Support' },
+      'SUPERADMIN',
+    );
+
+    const findOneAndUpdateCalls = userModelMock.findOneAndUpdate.mock
+      .calls as Array<[unknown, unknown, unknown]>;
+    const filters = findOneAndUpdateCalls[0][0] as {
+      _id: Types.ObjectId;
+      ownerId?: Types.ObjectId;
+    };
+    const update = findOneAndUpdateCalls[0][1] as {
+      $set: { firstName: string };
+    };
+
+    expect(filters._id).toBeInstanceOf(Types.ObjectId);
+    expect(filters.ownerId).toBeUndefined();
+    expect(update).toEqual({
+      $set: { firstName: 'Support' },
+    });
+  });
+
+  it('SUPERADMIN puede listar sin filtro por ownerId', async () => {
+    userModelMock.find.mockReturnValue({
+      sort: () => ({
+        skip: () => ({
+          limit: () => ({
+            exec: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+    });
+    userModelMock.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(0),
+    });
+
+    await service.findAllByScope(ownerId, 'SUPERADMIN', {
+      page: 1,
+      limit: 10,
+    });
+
+    expect(userModelMock.find).toHaveBeenCalledWith({});
   });
 
   // -------------------------

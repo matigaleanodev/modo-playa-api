@@ -60,7 +60,7 @@ La API implementa un modelo multi-tenant basado en:
 - Creación de usuarios por propietario
 - Listado por owner
 - Actualización y desactivación
-- Imagen de perfil gestionada por backend (multipart)
+- Imagen de perfil propia gestionada con signed upload + confirmación backend
 
 ### 📇 Contacts
 
@@ -77,7 +77,7 @@ La API implementa un modelo multi-tenant basado en:
 - Rango de disponibilidad validado
 - Relación con Contact
 - Gestión de imágenes (hasta 5) con imagen predeterminada
-- Alta/edición unificadas con imágenes vía backend (`multipart/form-data`)
+- Alta con imágenes iniciales mediante uploads pendientes + asociación final en `create`
 - Normalización de imágenes a WebP en backend
 
 ### 📊 Dashboard
@@ -85,7 +85,7 @@ La API implementa un modelo multi-tenant basado en:
 - Resumen consolidado para administración
 - Métricas de alojamientos, contactos y usuarios
 - Alertas operativas priorizadas (ej. crear contacto antes de alojamientos)
-- Actividad reciente derivada por owner
+- Actividad reciente derivada heurísticamente desde `createdAt/updatedAt` (`source=timestamps`), no auditoría persistida
 
 ### 🌤️ Destinations
 
@@ -108,12 +108,15 @@ Todos los endpoints están bajo:
 Ejemplos:
 
 - `POST /api/auth/login`
+- `POST /api/auth/me/profile-image/upload-url`
+- `POST /api/auth/me/profile-image/confirm`
 - `GET /api/lodgings`
 - `GET /api/admin/lodgings`
 - `POST /api/admin/contacts`
-- `POST /api/admin/lodgings/with-images`
-- `PATCH /api/admin/lodgings/:id/with-images`
-- `POST /api/admin/users/:id/profile-image/upload`
+- `POST /api/admin/lodging-image-uploads/upload-url`
+- `POST /api/admin/lodging-image-uploads/confirm`
+- `POST /api/admin/lodgings/:lodgingId/images/upload-url`
+- `POST /api/admin/lodgings/:lodgingId/images/confirm`
 - `GET /api/admin/dashboard/summary`
 - `GET /api/destinations`
 - `GET /api/destinations/:id/context`
@@ -124,6 +127,16 @@ La API también incluye endpoints administrativos para gestión de media
 La validación global usa `whitelist + forbidNonWhitelisted`, por lo que
 se rechazan campos no definidos en DTOs (por ejemplo, no enviar `id` en
 `POST /api/admin/contacts`).
+
+Los errores de contrato y de dominio exponen `code` explícitos en la
+respuesta (por ejemplo `INVALID_DESTINATION_ID`,
+`INVALID_TARGET_OWNER_ID`, `INVALID_PRICE_RANGE`,
+`PROFILE_IMAGE_FORBIDDEN_FOR_SUPERADMIN`) para evitar depender solo del
+texto de `message`.
+
+`auth/me/profile-image` está reservado al usuario `OWNER` autenticado.
+`SUPERADMIN` no puede operar la imagen de perfil de usuarios por ese
+endpoint.
 
 ---
 

@@ -5,6 +5,7 @@ import { DashboardService } from './dashboard.service';
 import { Lodging } from '@lodgings/schemas/lodging.schema';
 import { Contact } from '@contacts/schemas/contact.schema';
 import { User } from '@users/schemas/user.schema';
+import { ERROR_CODES } from '@common/constants/error-code';
 
 type AggregatePipeline = Array<Record<string, unknown>>;
 
@@ -140,7 +141,7 @@ describe('DashboardService', () => {
     expect(result.metrics.contacts.incomplete).toBe(1);
     expect(result.metrics.users.pendingActivation).toBe(1);
     expect(result.distributions.lodgingsByCity).toHaveLength(1);
-    expect(result.recentActivity.source).toBe('derived');
+    expect(result.recentActivity.source).toBe('timestamps');
     expect(result.alerts.map((a) => a.code)).toEqual(
       expect.arrayContaining([
         'LODGING_WITHOUT_CONTACT',
@@ -226,5 +227,16 @@ describe('DashboardService', () => {
     expect(result.alerts.map((a) => a.code)).toEqual(
       expect.arrayContaining(['LODGING_WITHOUT_CONTACT']),
     );
+  });
+
+  it('devuelve codigo explicito si ownerId es invalido', async () => {
+    await expect(
+      service.getSummary('invalid-owner-id', 'OWNER'),
+    ).rejects.toMatchObject({
+      response: {
+        message: 'Invalid owner id',
+        code: ERROR_CODES.INVALID_OWNER_ID,
+      },
+    });
   });
 });

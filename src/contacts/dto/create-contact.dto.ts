@@ -1,4 +1,10 @@
-import { IsBoolean, IsEmail, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsMongoId,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateContactDto {
@@ -37,4 +43,13 @@ export class CreateContactDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    example: '665c1234abc123456789abce',
+    description:
+      'Owner objetivo cuando un SUPERADMIN crea el contacto en nombre de otro tenant.',
+  })
+  @IsOptional()
+  @IsMongoId()
+  targetOwnerId?: string;
 }

@@ -21,9 +21,13 @@ export class ContactsService {
   async create(
     dto: CreateContactDto,
     ownerId: string,
+    role: UserRole,
   ): Promise<ContactDocument> {
-    const ownerObjectId = new Types.ObjectId(ownerId);
-
+    const ownerObjectId = this.resolveTargetOwnerId(
+      ownerId,
+      role,
+      dto.targetOwnerId,
+    );
     if (dto.isDefault) {
       await this.contactModel.updateMany(
         { ownerId: ownerObjectId, isDefault: true },
@@ -67,7 +71,11 @@ export class ContactsService {
     }
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const [data, total] = await Promise.all([
@@ -102,7 +110,11 @@ export class ContactsService {
     }
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const contact = await this.contactModel.findOne(filters);
@@ -133,7 +145,11 @@ export class ContactsService {
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const existing = await this.contactModel.findOne(filters);
@@ -199,7 +215,11 @@ export class ContactsService {
     };
 
     if (role !== 'SUPERADMIN') {
-      filters.ownerId = new Types.ObjectId(ownerId);
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
     }
 
     const contact = await this.contactModel.findOne(filters);
@@ -224,5 +244,20 @@ export class ContactsService {
     await contact.save();
 
     return { deleted: true };
+  }
+
+  private resolveTargetOwnerId(
+    requesterOwnerId: string,
+    role: UserRole,
+    targetOwnerId?: string,
+  ): Types.ObjectId {
+    const effectiveOwnerId =
+      role === 'SUPERADMIN' && targetOwnerId ? targetOwnerId : requesterOwnerId;
+
+    return toObjectIdOrThrow(effectiveOwnerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
   }
 }

@@ -9,9 +9,9 @@ import {
   ApiPublicLodgingsController,
 } from '../swagger/lodgings-public.swagger';
 import { LodgingMapper } from '@lodgings/mappers/lodgings.mapper';
-import { LodgingResponseDto } from '@lodgings/dto/lodging-response.dto';
 import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
 import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
+import { PublicLodgingResponseDto } from '@lodgings/dto/public-lodging-response.dto';
 
 @ApiPublicLodgingsController()
 @Controller('lodgings')
@@ -26,21 +26,21 @@ export class LodgingsPublicController {
   @Get()
   async findAll(
     @Query() query: PublicLodgingsQueryDto,
-  ): Promise<PaginatedResponse<LodgingResponseDto>> {
+  ): Promise<PaginatedResponse<PublicLodgingResponseDto>> {
     const result = await this.lodgingsService.findPublicPaginated(query);
 
     return {
       ...result,
       data: result.data.map((lodging) =>
-        LodgingMapper.toResponse(lodging, this.mediaUrlBuilder),
+        LodgingMapper.toPublicResponse(lodging, this.mediaUrlBuilder),
       ),
     };
   }
 
   @ApiFindPublicLodgingByIdDoc()
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<LodgingResponseDto> {
+  async findOne(@Param('id') id: string): Promise<PublicLodgingResponseDto> {
     const lodging = await this.lodgingsService.findPublicById(id);
-    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
+    return LodgingMapper.toPublicResponse(lodging, this.mediaUrlBuilder);
   }
 }

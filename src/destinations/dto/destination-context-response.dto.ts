@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { DestinationId } from '../providers/destination-id.enum';
 
 export class WeatherSnapshotDto {
   @ApiProperty({ example: 27 })
@@ -31,8 +32,14 @@ export class SunContextDto {
 }
 
 export class DestinationContextResponseDto {
+  @ApiProperty({ enum: DestinationId, example: DestinationId.PAMPAS })
+  destinationId: DestinationId;
+
   @ApiProperty({ example: 'Mar de las Pampas' })
   destination: string;
+
+  @ApiProperty({ example: 'America/Argentina/Buenos_Aires' })
+  timezone: string;
 
   @ApiProperty({ type: WeatherSnapshotDto })
   weather: WeatherSnapshotDto;

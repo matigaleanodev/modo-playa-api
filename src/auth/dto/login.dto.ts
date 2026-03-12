@@ -1,21 +1,17 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { AuthIdentifierDto } from './auth-identifier.dto';
+import { PasswordDto } from './password.dto';
 
-export class LoginDto {
-  @ApiProperty({
-    example: 'admin@modoplaya.com',
-    description: 'Email o username del usuario',
-    minLength: 3,
-  })
-  @IsString()
-  @MinLength(3)
-  identifier!: string;
-
+export class LoginDto extends AuthIdentifierDto {
   @ApiProperty({
     example: 'Password123',
+    description: 'Contrasena del usuario',
     minLength: 8,
+    maxLength: 72,
   })
   @IsString()
   @MinLength(8)
-  password!: string;
+  @MaxLength(72)
+  password!: PasswordDto['password'];
 }

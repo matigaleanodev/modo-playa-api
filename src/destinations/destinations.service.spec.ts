@@ -66,7 +66,9 @@ describe('DestinationsService', () => {
     expect(mockWeatherService.getContext).toHaveBeenCalledTimes(1);
     expect(mockSunService.getContext).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
+      destinationId: DestinationId.PAMPAS,
       destination: 'Mar de las Pampas',
+      timezone: 'America/Argentina/Buenos_Aires',
       weather: { temperature: 27, windSpeed: 14, weatherCode: 3 },
       forecast: [
         { day: 'today', max: 28, min: 19 },

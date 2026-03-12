@@ -1,9 +1,9 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, QueryFilter } from 'mongoose';
+import { Model, QueryFilter, Types } from 'mongoose';
 import { randomUUID } from 'crypto';
-import { PassThrough, Readable } from 'stream';
+import { PassThrough } from 'stream';
 import { pipeline } from 'stream/promises';
 import { UserRole } from '@common/interfaces/role.interface';
 import { toObjectIdOrThrow } from '@common/utils/object-id.util';
@@ -28,18 +28,21 @@ import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interf
 import { LodgingImage } from '@lodgings/schemas/lodging-image.schema';
 import { PendingLodgingImageUpload } from '@lodgings/schemas/pending-lodging-image-upload.schema';
 import { LodgingImageResponseDto } from '@lodgings/dto/lodging-image-response.dto';
-
-type UploadedLodgingImageFile = {
-  buffer: Buffer;
-  mimetype: string;
-  size: number;
-};
+import { RequestDraftLodgingImageUploadUrlDto } from '@lodgings/dto/request-draft-lodging-image-upload-url.dto';
+import {
+  PendingLodgingDraftImageUpload,
+  PendingLodgingDraftImageUploadDocument,
+} from '@lodgings/schemas/pending-lodging-draft-image-upload.schema';
+import { ConfirmDraftLodgingImageDto } from '@lodgings/dto/confirm-draft-lodging-image.dto';
+import { ConfirmDraftLodgingImageResponseDto } from '@lodgings/dto/confirm-draft-lodging-image-response.dto';
 
 @Injectable()
 export class LodgingImagesService {
   constructor(
     @InjectModel(Lodging.name)
     private readonly lodgingModel: Model<LodgingDocument>,
+    @InjectModel(PendingLodgingDraftImageUpload.name)
+    private readonly pendingDraftUploadModel: Model<PendingLodgingDraftImageUploadDocument>,
     @Inject(OBJECT_STORAGE_SERVICE)
     private readonly storage: ObjectStorageService,
     @Inject(IMAGE_PROCESSOR_SERVICE)
@@ -50,6 +53,122 @@ export class LodgingImagesService {
     private readonly policy: LodgingImagesPolicyService,
   ) {}
 
+  async createDraftUploadUrl(
+    dto: RequestDraftLodgingImageUploadUrlDto,
+    ownerId: string,
+  ): Promise<LodgingImageUploadUrlResponseDto> {
+    this.assertAllowedMime(dto.mime);
+    this.assertSizeWithinLimit(dto.size, this.getLodgingMaxBytes());
+
+    const ownerObjectId = toObjectIdOrThrow(ownerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
+
+    await this.cleanupExpiredDraftUploads(ownerObjectId, dto.uploadSessionId);
+
+    const pendingCount = await this.pendingDraftUploadModel.countDocuments({
+      ownerId: ownerObjectId,
+      uploadSessionId: dto.uploadSessionId,
+    });
+    this.policy.assertCanReserveSlot(0, pendingCount);
+
+    const imageId = randomUUID();
+    const ttlSeconds = this.getPendingUploadTtlSeconds();
+    const stagingKey = this.buildDraftStagingKey(
+      ownerId,
+      dto.uploadSessionId,
+      imageId,
+    );
+
+    await this.pendingDraftUploadModel.create({
+      ownerId: ownerObjectId,
+      uploadSessionId: dto.uploadSessionId,
+      imageId,
+      stagingKey,
+      expiresAt: new Date(Date.now() + ttlSeconds * 1000),
+      status: 'PENDING',
+    });
+
+    const signed = await this.storage.createSignedPutUrl({
+      key: stagingKey,
+      contentType: dto.mime,
+      contentLength: dto.size,
+    });
+
+    return {
+      imageId,
+      uploadKey: stagingKey,
+      uploadUrl: signed.url,
+      method: signed.method,
+      requiredHeaders: signed.requiredHeaders,
+      expiresInSeconds: signed.expiresInSeconds,
+    };
+  }
+
+  async confirmDraftUpload(
+    dto: ConfirmDraftLodgingImageDto,
+    ownerId: string,
+  ): Promise<ConfirmDraftLodgingImageResponseDto> {
+    const pending = await this.findPendingDraftUploadOrThrow(
+      ownerId,
+      dto.uploadSessionId,
+      dto.imageId,
+    );
+
+    if (pending.status === 'CONFIRMED') {
+      return {
+        imageId: pending.imageId,
+        uploadSessionId: pending.uploadSessionId,
+        confirmed: true,
+        idempotent: true,
+      };
+    }
+
+    if (new Date(pending.expiresAt).getTime() < Date.now()) {
+      await this.deleteDraftUploads([pending]);
+      throw new DomainException(
+        'Pending lodging draft image upload expired',
+        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    this.policy.assertPendingUploadValid(
+      {
+        imageId: pending.imageId,
+        stagingKey: pending.stagingKey,
+        createdAt: pending.createdAt,
+        expiresAt: pending.expiresAt,
+        status: 'PENDING',
+      },
+      pending.stagingKey,
+      new Date(),
+    );
+
+    const stagingHead = await this.storage.headObject(pending.stagingKey);
+    if (!stagingHead.exists) {
+      throw new DomainException(
+        'Pending draft lodging image upload not found in storage',
+        ERROR_CODES.STORAGE_OBJECT_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    this.assertAllowedMime(stagingHead.mime ?? undefined);
+    this.assertSizeWithinLimit(stagingHead.bytes, this.getLodgingMaxBytes());
+
+    pending.status = 'CONFIRMED';
+    await pending.save();
+
+    return {
+      imageId: pending.imageId,
+      uploadSessionId: pending.uploadSessionId,
+      confirmed: true,
+    };
+  }
+
   async createUploadUrl(
     lodgingId: string,
     dto: RequestLodgingImageUploadUrlDto,
@@ -59,7 +178,12 @@ export class LodgingImagesService {
     this.assertAllowedMime(dto.mime);
     this.assertSizeWithinLimit(dto.size, this.getLodgingMaxBytes());
 
-    await this.findOwnedLodgingOrThrow(lodgingId, ownerId, role);
+    const lodging = await this.findOwnedLodgingOrThrow(
+      lodgingId,
+      ownerId,
+      role,
+    );
+    await this.cleanupExpiredLodgingPendingUploads(lodging);
 
     const imageId = randomUUID();
     const stagingKey = this.buildStagingKey(lodgingId, imageId);
@@ -104,9 +228,10 @@ export class LodgingImagesService {
         ownerId,
         role,
       );
-      const imagesCount = current.mediaImages.length;
-      const pendingCount = current.pendingImageUploads.length;
-      this.policy.assertCanReserveSlot(imagesCount, pendingCount);
+      this.policy.assertCanReserveSlot(
+        current.mediaImages.length,
+        current.pendingImageUploads.length,
+      );
 
       throw new DomainException(
         'No se pudo reservar el cupo para la imagen',
@@ -154,6 +279,24 @@ export class LodgingImagesService {
     }
 
     const expectedStagingKey = this.buildStagingKey(lodgingId, dto.imageId);
+    if (dto.key !== expectedStagingKey) {
+      throw new DomainException(
+        'Invalid lodging image upload key',
+        ERROR_CODES.LODGING_IMAGE_UPLOAD_INVALID_KEY,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const removedExpiredIds =
+      await this.cleanupExpiredLodgingPendingUploads(lodging);
+    if (removedExpiredIds.has(dto.imageId)) {
+      throw new DomainException(
+        'Pending lodging image upload expired',
+        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const pending = this.getPendingUploads(lodging).find(
       (item) => item.imageId === dto.imageId,
     );
@@ -270,6 +413,14 @@ export class LodgingImagesService {
       );
     }
 
+    if (updated.mediaImages.length > 0) {
+      updated.mainImage =
+        updated.mediaImages.find((image) => image.isDefault)?.key ??
+        updated.mediaImages[0].key;
+      updated.images = updated.mediaImages.map((image) => image.key);
+      await updated.save();
+    }
+
     await this.ensureLodgingDefaultInvariant(updated);
 
     try {
@@ -321,6 +472,10 @@ export class LodgingImagesService {
       image.isDefault = image.imageId === imageId;
     }
 
+    const defaultImage = images.find((image) => image.isDefault);
+    lodging.mainImage = defaultImage?.key ?? lodging.mainImage;
+    lodging.images = images.map((image) => image.key);
+
     this.policy.assertValidImagesState(images);
     await lodging.save();
 
@@ -365,6 +520,9 @@ export class LodgingImagesService {
       images[0].isDefault = true;
     }
 
+    lodging.mainImage = images.find((image) => image.isDefault)?.key ?? '';
+    lodging.images = images.map((image) => image.key);
+
     this.policy.assertValidImagesState(images);
     await lodging.save();
 
@@ -374,25 +532,64 @@ export class LodgingImagesService {
     };
   }
 
-  async attachUploadedFiles(
+  async attachDraftUploadsToLodging(
     lodgingId: string,
-    files: UploadedLodgingImageFile[],
     ownerId: string,
-    role: UserRole,
+    uploadSessionId: string,
+    pendingImageIds: string[],
   ): Promise<void> {
-    if (!files || files.length === 0) {
+    if (pendingImageIds.length === 0) {
       return;
     }
+
+    const ownerObjectId = toObjectIdOrThrow(ownerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
+
+    await this.cleanupExpiredDraftUploads(ownerObjectId, uploadSessionId);
+
+    const pendingUploads = await this.pendingDraftUploadModel.find({
+      ownerId: ownerObjectId,
+      uploadSessionId,
+      imageId: { $in: pendingImageIds },
+    });
+
+    if (pendingUploads.length !== pendingImageIds.length) {
+      throw new DomainException(
+        'Some pending lodging draft images were not found',
+        ERROR_CODES.LODGING_IMAGE_PENDING_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const pendingById = new Map(
+      pendingUploads.map((pending) => [pending.imageId, pending]),
+    );
+    const orderedUploads = pendingImageIds.map((imageId) => {
+      const pending = pendingById.get(imageId);
+      if (!pending) {
+        throw new DomainException(
+          'Pending lodging draft image not found',
+          ERROR_CODES.LODGING_IMAGE_PENDING_NOT_FOUND,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      return pending;
+    });
 
     const lodging = await this.findOwnedLodgingOrThrow(
       lodgingId,
       ownerId,
-      role,
+      'OWNER',
     );
     const existingImages = this.getLodgingImages(lodging);
-    this.policy.assertCanReserveSlot(existingImages.length, 0);
 
-    if (existingImages.length + files.length > this.policy.MAX_IMAGES) {
+    if (
+      existingImages.length + orderedUploads.length >
+      this.policy.MAX_IMAGES
+    ) {
       throw new DomainException(
         'Lodging image limit exceeded',
         ERROR_CODES.LODGING_IMAGE_LIMIT_EXCEEDED,
@@ -404,12 +601,44 @@ export class LodgingImagesService {
     const uploadedImages: LodgingImage[] = [];
 
     try {
-      for (const file of files) {
-        this.assertAllowedMime(file.mimetype);
-        this.assertSizeWithinLimit(file.size, this.getLodgingMaxBytes());
+      for (const pending of orderedUploads) {
+        this.policy.assertPendingUploadValid(
+          {
+            imageId: pending.imageId,
+            stagingKey: pending.stagingKey,
+            createdAt: pending.createdAt,
+            expiresAt: pending.expiresAt,
+            status: 'PENDING',
+          },
+          pending.stagingKey,
+          new Date(),
+        );
 
-        const imageId = randomUUID();
-        const finalKey = this.buildFinalKey(lodgingId, imageId);
+        if (pending.status !== 'CONFIRMED') {
+          throw new DomainException(
+            'Pending lodging draft image upload must be confirmed before create',
+            ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        const stagingHead = await this.storage.headObject(pending.stagingKey);
+        if (!stagingHead.exists) {
+          throw new DomainException(
+            'Pending draft lodging image upload not found in storage',
+            ERROR_CODES.STORAGE_OBJECT_NOT_FOUND,
+            HttpStatus.NOT_FOUND,
+          );
+        }
+
+        this.assertAllowedMime(stagingHead.mime ?? undefined);
+        this.assertSizeWithinLimit(
+          stagingHead.bytes,
+          this.getLodgingMaxBytes(),
+        );
+
+        const finalKey = this.buildFinalKey(lodgingId, pending.imageId);
+        const source = await this.storage.getObjectStream(pending.stagingKey);
         const handle = this.imageProcessor.createLodgingNormalizerTransform({
           maxWidth: this.getLodgingMaxWidth(),
           maxHeight: this.getLodgingMaxHeight(),
@@ -427,7 +656,7 @@ export class LodgingImagesService {
         await Promise.all([
           uploadPromise,
           pipeline(
-            Readable.from(file.buffer) as NodeJS.ReadableStream,
+            source.stream as NodeJS.ReadableStream,
             handle.transform as NodeJS.WritableStream,
             output,
           ),
@@ -436,7 +665,7 @@ export class LodgingImagesService {
         const metadata = await handle.getMetadata();
         uploadedKeys.push(finalKey);
         uploadedImages.push({
-          imageId,
+          imageId: pending.imageId,
           key: finalKey,
           isDefault: false,
           width: metadata.width,
@@ -447,25 +676,46 @@ export class LodgingImagesService {
         });
       }
     } catch (error) {
-      for (const key of uploadedKeys) {
-        try {
-          await this.storage.deleteObject(key);
-        } catch {
-          // best effort cleanup
-        }
-      }
+      await Promise.all(
+        uploadedKeys.map(async (key) => {
+          try {
+            await this.storage.deleteObject(key);
+          } catch {
+            // best effort cleanup
+          }
+        }),
+      );
       throw error;
     }
 
-    const hadDefault = existingImages.some((image) => image.isDefault);
     lodging.mediaImages = [...existingImages, ...uploadedImages];
 
-    if (!hadDefault && lodging.mediaImages.length > 0) {
-      lodging.mediaImages[0].isDefault = true;
+    if (lodging.mediaImages.length > 0) {
+      for (const [index, image] of lodging.mediaImages.entries()) {
+        image.isDefault = index === 0;
+      }
+      lodging.mainImage =
+        lodging.mediaImages.find((image) => image.isDefault)?.key ??
+        lodging.mediaImages[0].key;
+      lodging.images = lodging.mediaImages.map((image) => image.key);
     }
 
     this.policy.assertValidImagesState(lodging.mediaImages);
     await lodging.save();
+
+    await this.pendingDraftUploadModel.deleteMany({
+      _id: { $in: orderedUploads.map((pending) => pending._id) },
+    });
+
+    await Promise.all(
+      orderedUploads.map(async (pending) => {
+        try {
+          await this.storage.deleteObject(pending.stagingKey);
+        } catch {
+          // best effort cleanup
+        }
+      }),
+    );
   }
 
   private async findOwnedLodgingOrThrow(
@@ -476,7 +726,7 @@ export class LodgingImagesService {
     const filters: QueryFilter<LodgingDocument> = {
       _id: toObjectIdOrThrow(lodgingId, {
         message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -484,7 +734,7 @@ export class LodgingImagesService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -506,6 +756,14 @@ export class LodgingImagesService {
     return `lodgings/${lodgingId}/${imageId}/staging-upload`;
   }
 
+  buildDraftStagingKey(
+    ownerId: string,
+    uploadSessionId: string,
+    imageId: string,
+  ): string {
+    return `lodgings/drafts/${ownerId}/${uploadSessionId}/${imageId}/staging-upload`;
+  }
+
   buildFinalKey(lodgingId: string, imageId: string): string {
     return `lodgings/${lodgingId}/${imageId}/original.webp`;
   }
@@ -518,7 +776,7 @@ export class LodgingImagesService {
     const filters: Record<string, unknown> = {
       _id: toObjectIdOrThrow(lodgingId, {
         message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -526,7 +784,7 @@ export class LodgingImagesService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -542,6 +800,103 @@ export class LodgingImagesService {
     lodging: LodgingDocument,
   ): PendingLodgingImageUpload[] {
     return lodging.pendingImageUploads ?? [];
+  }
+
+  private async findPendingDraftUploadOrThrow(
+    ownerId: string,
+    uploadSessionId: string,
+    imageId: string,
+  ): Promise<PendingLodgingDraftImageUploadDocument> {
+    const pending = await this.pendingDraftUploadModel.findOne({
+      ownerId: toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
+      uploadSessionId,
+      imageId,
+    });
+
+    if (!pending) {
+      throw new DomainException(
+        'Pending lodging draft image upload not found',
+        ERROR_CODES.LODGING_IMAGE_PENDING_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return pending;
+  }
+
+  private async cleanupExpiredDraftUploads(
+    ownerId: Types.ObjectId,
+    uploadSessionId: string,
+  ): Promise<void> {
+    const expired = await this.pendingDraftUploadModel.find({
+      ownerId,
+      uploadSessionId,
+      expiresAt: { $lt: new Date() },
+    });
+
+    await this.deleteDraftUploads(expired);
+  }
+
+  private async deleteDraftUploads(
+    uploads: PendingLodgingDraftImageUploadDocument[],
+  ): Promise<void> {
+    if (uploads.length === 0) {
+      return;
+    }
+
+    await this.pendingDraftUploadModel.deleteMany({
+      _id: { $in: uploads.map((upload) => upload._id) },
+    });
+
+    await Promise.all(
+      uploads.map(async (upload) => {
+        try {
+          await this.storage.deleteObject(upload.stagingKey);
+        } catch {
+          // best effort cleanup
+        }
+      }),
+    );
+  }
+
+  private async cleanupExpiredLodgingPendingUploads(
+    lodging: LodgingDocument,
+  ): Promise<Set<string>> {
+    const pendingUploads = this.getPendingUploads(lodging);
+    if (pendingUploads.length === 0) {
+      return new Set<string>();
+    }
+
+    const now = Date.now();
+    const expired = pendingUploads.filter(
+      (pending) => new Date(pending.expiresAt).getTime() < now,
+    );
+
+    if (expired.length === 0) {
+      return new Set<string>();
+    }
+
+    lodging.pendingImageUploads = pendingUploads.filter(
+      (pending) =>
+        !expired.some((candidate) => candidate.imageId === pending.imageId),
+    );
+    await lodging.save();
+
+    await Promise.all(
+      expired.map(async (pending) => {
+        try {
+          await this.storage.deleteObject(pending.stagingKey);
+        } catch {
+          // best effort cleanup
+        }
+      }),
+    );
+
+    return new Set(expired.map((pending) => pending.imageId));
   }
 
   private async ensureLodgingDefaultInvariant(
@@ -563,6 +918,9 @@ export class LodgingImagesService {
       image.isDefault = false;
     }
     images[0].isDefault = true;
+
+    lodging.mainImage = images[0].key;
+    lodging.images = images.map((image) => image.key);
 
     this.policy.assertValidImagesState(images);
     await lodging.save();

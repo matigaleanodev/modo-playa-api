@@ -3,7 +3,7 @@ import { CreateLodgingDto } from './dto/create-lodging.dto';
 import { UpdateLodgingDto } from './dto/update-lodging.dto';
 import { Contact, ContactDocument } from '@contacts/schemas/contact.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, QueryFilter } from 'mongoose';
+import { Model, QueryFilter, Types } from 'mongoose';
 import { Lodging, LodgingDocument } from './schemas/lodging.schema';
 import { AvailabilityRangeDto } from './dto/availability-range.dto';
 import { DomainException } from '@common/exceptions/domain.exception';
@@ -17,8 +17,6 @@ import { UserRole } from '@common/interfaces/role.interface';
 import { toObjectIdOrThrow } from '@common/utils/object-id.util';
 import { escapeRegex } from '@common/utils/regex.util';
 import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
-import { CreateLodgingWithImagesDto } from '@lodgings/dto/create-lodging-with-images.dto';
-import { UpdateLodgingWithImagesDto } from '@lodgings/dto/update-lodging-with-images.dto';
 
 @Injectable()
 export class LodgingsService {
@@ -30,7 +28,6 @@ export class LodgingsService {
   constructor(
     @InjectModel(Lodging.name)
     private readonly lodgingModel: Model<LodgingDocument>,
-
     @InjectModel(Contact.name)
     private readonly contactModel: Model<ContactDocument>,
     private readonly lodgingImagesService: LodgingImagesService,
@@ -38,132 +35,61 @@ export class LodgingsService {
 
   async create(
     dto: CreateLodgingDto,
-    ownerId: string,
+    requesterOwnerId: string,
+    role: UserRole = 'OWNER',
   ): Promise<LodgingDocument> {
     this.validateRanges(dto.occupiedRanges);
-    const ownerObjectId = toObjectIdOrThrow(ownerId, {
-      message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-      httpStatus: HttpStatus.BAD_REQUEST,
-    });
 
-    let contactId: Types.ObjectId | undefined;
-
-    if (dto.contactId) {
-      if (!Types.ObjectId.isValid(dto.contactId)) {
-        throw new DomainException(
-          'Invalid contact id',
-          ERROR_CODES.INVALID_OBJECT_ID,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const contact = await this.contactModel.findOne({
-        _id: new Types.ObjectId(dto.contactId),
-        ownerId: ownerObjectId,
-        active: true,
-      });
-
-      if (!contact) {
-        throw new DomainException(
-          'Contact not found or not allowed',
-          ERROR_CODES.CONTACT_NOT_ALLOWED,
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      contactId = contact._id;
-    } else {
-      const defaultContact = await this.contactModel.findOne({
-        ownerId: ownerObjectId,
-        isDefault: true,
-        active: true,
-      });
-      if (defaultContact) {
-        contactId = defaultContact._id;
-      }
-    }
+    const ownerObjectId = this.resolveTargetOwnerId(
+      requesterOwnerId,
+      role,
+      dto.targetOwnerId,
+    );
+    const contactId = await this.resolveContactId(ownerObjectId, dto.contactId);
+    const {
+      pendingImageIds,
+      uploadSessionId,
+      mainImage,
+      images,
+      ...persistedDto
+    } = dto;
 
     const lodging = new this.lodgingModel({
-      ...dto,
+      ...persistedDto,
       ownerId: ownerObjectId,
       contactId,
+      mainImage: mainImage?.trim() || 'lodgings/default-placeholder.webp',
+      images: images ?? [],
     });
     const saved = await lodging.save();
-    await saved.populate(this.contactPopulate);
-    return saved;
-  }
-
-  async createWithImages(
-    dto: CreateLodgingWithImagesDto,
-    files:
-      | Array<{ buffer: Buffer; mimetype: string; size: number }>
-      | undefined,
-    ownerId: string,
-    role: UserRole,
-  ): Promise<LodgingDocument> {
-    const safeFiles = files ?? [];
-    const hasMainImage = Boolean(dto.mainImage?.trim());
-
-    if (!hasMainImage && safeFiles.length === 0) {
-      throw new DomainException(
-        'mainImage is required when no image files are provided',
-        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const createDto: CreateLodgingDto = {
-      ...dto,
-      mainImage: dto.mainImage?.trim() || 'lodgings/default-placeholder.webp',
-      images: dto.images ?? [],
-    };
-
-    const created = await this.create(createDto, ownerId);
-
-    if (safeFiles.length === 0) {
-      return created;
-    }
 
     try {
-      await this.lodgingImagesService.attachUploadedFiles(
-        created._id.toString(),
-        safeFiles,
-        ownerId,
-        role,
-      );
+      if (pendingImageIds?.length) {
+        if (!uploadSessionId) {
+          throw new DomainException(
+            'uploadSessionId is required when pendingImageIds are provided',
+            ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        await this.lodgingImagesService.attachDraftUploadsToLodging(
+          saved._id.toString(),
+          ownerObjectId.toString(),
+          uploadSessionId,
+          pendingImageIds,
+        );
+      }
     } catch (error) {
-      await this.lodgingModel.deleteOne({ _id: created._id });
+      await this.lodgingModel.deleteOne({ _id: saved._id });
       throw error;
     }
 
-    return this.findAdminById(created._id.toString(), ownerId, role);
-  }
-
-  async updateWithImages(
-    id: string,
-    dto: UpdateLodgingWithImagesDto,
-    files:
-      | Array<{ buffer: Buffer; mimetype: string; size: number }>
-      | undefined,
-    ownerId: string,
-    role: UserRole,
-  ): Promise<LodgingDocument> {
-    await this.update(id, dto, ownerId, role);
-
-    const safeFiles = files ?? [];
-    if (safeFiles.length === 0) {
-      return this.findAdminById(id, ownerId, role);
-    }
-
-    await this.lodgingImagesService.attachUploadedFiles(
-      id,
-      safeFiles,
-      ownerId,
+    return this.findAdminById(
+      saved._id.toString(),
+      ownerObjectId.toString(),
       role,
     );
-
-    return this.findAdminById(id, ownerId, role);
   }
 
   async findPublicPaginated(
@@ -180,6 +106,18 @@ export class LodgingsService {
       amenities,
       tag,
     } = query;
+
+    if (
+      minPrice !== undefined &&
+      maxPrice !== undefined &&
+      minPrice > maxPrice
+    ) {
+      throw new DomainException(
+        'minPrice cannot be greater than maxPrice',
+        ERROR_CODES.INVALID_PRICE_RANGE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
     const filters: QueryFilter<LodgingDocument> = {
       active: true,
@@ -214,7 +152,7 @@ export class LodgingsService {
     }
 
     if (tag && tag.length > 0) {
-      filters.tags = { $all: tag };
+      filters.tags = { $all: Array.from(new Set(tag)) };
     }
 
     const [data, total] = await Promise.all([
@@ -240,7 +178,7 @@ export class LodgingsService {
       .findOne({
         _id: toObjectIdOrThrow(id, {
           message: 'Invalid lodging id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_LODGING_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         active: true,
@@ -266,7 +204,7 @@ export class LodgingsService {
     const { page = 1, limit = 10, includeInactive = true } = query;
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
 
@@ -301,7 +239,7 @@ export class LodgingsService {
     const filters: QueryFilter<LodgingDocument> = {
       _id: toObjectIdOrThrow(id, {
         message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -309,7 +247,7 @@ export class LodgingsService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -345,37 +283,17 @@ export class LodgingsService {
 
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
     const lodgingObjectId = toObjectIdOrThrow(id, {
       message: 'Invalid lodging id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_LODGING_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
 
     if (dto.contactId) {
-      if (!Types.ObjectId.isValid(dto.contactId)) {
-        throw new DomainException(
-          'Invalid contact id',
-          ERROR_CODES.INVALID_OBJECT_ID,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const contact = await this.contactModel.findOne({
-        _id: dto.contactId,
-        ownerId: ownerObjectId,
-        active: true,
-      });
-
-      if (!contact) {
-        throw new DomainException(
-          'Contact not allowed',
-          ERROR_CODES.CONTACT_NOT_ALLOWED,
-          HttpStatus.NOT_FOUND,
-        );
-      }
+      await this.resolveContactId(ownerObjectId, dto.contactId);
     }
 
     const filters: QueryFilter<LodgingDocument> = {
@@ -385,6 +303,7 @@ export class LodgingsService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = ownerObjectId;
     }
+
     const lodging = await this.lodgingModel
       .findOneAndUpdate(filters, dto, {
         returnDocument: 'after',
@@ -411,7 +330,7 @@ export class LodgingsService {
     const filters: QueryFilter<LodgingDocument> = {
       _id: toObjectIdOrThrow(id, {
         message: 'Invalid lodging id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     };
@@ -419,7 +338,7 @@ export class LodgingsService {
     if (role !== 'SUPERADMIN') {
       filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       });
     }
@@ -506,6 +425,45 @@ export class LodgingsService {
     await lodging.save();
 
     return this.toAvailabilityRangeDtos(lodging.occupiedRanges);
+  }
+
+  private async resolveContactId(
+    ownerObjectId: Types.ObjectId,
+    contactId?: string,
+  ): Promise<Types.ObjectId | undefined> {
+    if (contactId) {
+      if (!Types.ObjectId.isValid(contactId)) {
+        throw new DomainException(
+          'Invalid contact id',
+          ERROR_CODES.INVALID_CONTACT_ID,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const contact = await this.contactModel.findOne({
+        _id: new Types.ObjectId(contactId),
+        ownerId: ownerObjectId,
+        active: true,
+      });
+
+      if (!contact) {
+        throw new DomainException(
+          'Contact not found or not allowed',
+          ERROR_CODES.CONTACT_NOT_ALLOWED,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return contact._id;
+    }
+
+    const defaultContact = await this.contactModel.findOne({
+      ownerId: ownerObjectId,
+      isDefault: true,
+      active: true,
+    });
+
+    return defaultContact?._id;
   }
 
   private validateRanges(ranges?: AvailabilityRangeDto[]) {
@@ -596,6 +554,21 @@ export class LodgingsService {
         from: normalizedRange.from.toISOString().slice(0, 10),
         to: normalizedRange.to.toISOString().slice(0, 10),
       };
+    });
+  }
+
+  private resolveTargetOwnerId(
+    requesterOwnerId: string,
+    role: UserRole,
+    targetOwnerId?: string,
+  ): Types.ObjectId {
+    const effectiveOwnerId =
+      role === 'SUPERADMIN' && targetOwnerId ? targetOwnerId : requesterOwnerId;
+
+    return toObjectIdOrThrow(effectiveOwnerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
     });
   }
 }
