@@ -1,5 +1,11 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsMongoId,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -15,4 +21,13 @@ export class CreateUserDto {
   @IsString()
   @MinLength(3)
   username!: string;
+
+  @ApiPropertyOptional({
+    example: '665c1234abc123456789abce',
+    description:
+      'Owner objetivo cuando un SUPERADMIN crea el usuario en nombre de otro tenant.',
+  })
+  @IsOptional()
+  @IsMongoId()
+  targetOwnerId?: string;
 }

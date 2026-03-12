@@ -94,6 +94,29 @@ describe('UsersService', () => {
     expect(result).toBeDefined();
   });
 
+  it('SUPERADMIN puede crear en nombre de targetOwnerId', async () => {
+    const targetOwnerId = new Types.ObjectId().toString();
+    userModelMock.countDocuments.mockResolvedValue(10);
+    userModelMock.findOne.mockResolvedValue(null);
+
+    await service.createUser(ownerId, 'SUPERADMIN', {
+      email: 'support@mail.com',
+      username: 'support',
+      targetOwnerId,
+    });
+
+    const constructorCalls = (
+      userModelMock as unknown as {
+        mock: { calls: Array<Array<unknown>> };
+      }
+    ).mock.calls;
+    const constructorCall = constructorCalls[0][0] as {
+      ownerId: Types.ObjectId;
+    };
+
+    expect(constructorCall.ownerId.toString()).toBe(targetOwnerId);
+  });
+
   it('debe lanzar error si ya existe usuario con mismo email o username', async () => {
     userModelMock.countDocuments.mockResolvedValue(1);
     userModelMock.findOne.mockResolvedValue({});

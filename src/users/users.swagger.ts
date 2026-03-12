@@ -31,7 +31,7 @@ export function ApiCreateUserDoc() {
     ApiOperation({
       summary: 'Crear usuario para el owner actual',
       description:
-        'Crea un usuario asociado al owner autenticado. Limite de 3 usuarios por owner salvo SUPERADMIN.',
+        'Crea un usuario asociado al owner autenticado. SUPERADMIN puede crear en nombre de otro owner usando targetOwnerId. Limite de 3 usuarios por owner salvo SUPERADMIN.',
     }),
     ApiBody({
       type: CreateUserDto,

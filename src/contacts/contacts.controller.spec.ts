@@ -46,7 +46,7 @@ describe('ContactsController', () => {
     jest.clearAllMocks();
   });
 
-  it('debe llamar a create con ownerId', async () => {
+  it('debe llamar a create con ownerId y role', async () => {
     const dto: CreateContactDto = { name: 'Test' };
 
     const mockContact = {
@@ -58,7 +58,11 @@ describe('ContactsController', () => {
 
     const result = await controller.create(dto, mockRequest);
 
-    expect(mockService.create).toHaveBeenCalledWith(dto, mockUser.ownerId);
+    expect(mockService.create).toHaveBeenCalledWith(
+      dto,
+      mockUser.ownerId,
+      mockUser.role,
+    );
 
     expect(result).toEqual({
       id: '1',

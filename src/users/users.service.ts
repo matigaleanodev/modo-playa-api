@@ -23,12 +23,11 @@ export class UsersService {
     role: UserRole,
     dto: CreateUserDto,
   ): Promise<UserDocument> {
-    const ownerObjectId = toObjectIdOrThrow(ownerId, {
-      message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-      httpStatus: HttpStatus.BAD_REQUEST,
-    });
-
+    const ownerObjectId = this.resolveTargetOwnerId(
+      ownerId,
+      role,
+      dto.targetOwnerId,
+    );
     if (role !== 'SUPERADMIN') {
       const count = await this.userModel.countDocuments({
         ownerId: ownerObjectId,
@@ -265,5 +264,20 @@ export class UsersService {
         resetPasswordAttempts: 0,
       },
     );
+  }
+
+  private resolveTargetOwnerId(
+    requesterOwnerId: string,
+    role: UserRole,
+    targetOwnerId?: string,
+  ) {
+    const effectiveOwnerId =
+      role === 'SUPERADMIN' && targetOwnerId ? targetOwnerId : requesterOwnerId;
+
+    return toObjectIdOrThrow(effectiveOwnerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
   }
 }

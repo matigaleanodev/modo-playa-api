@@ -57,7 +57,7 @@ Multi-tenancy is implemented through:
 - Owner-based user creation
 - Owner-based listing
 - Update and deactivation
-- Profile image managed directly by backend (multipart)
+- Own profile image managed with signed upload + backend confirmation
 
 ### 📇 Contacts
 
@@ -74,7 +74,7 @@ Multi-tenancy is implemented through:
 - Availability range validation
 - Contact relation
 - Image management (up to 5) with default image
-- Unified create/update with images via backend (`multipart/form-data`)
+- Create flow with initial images through pending uploads + final association in `create`
 - Backend WebP normalization for uploaded images
 
 ### 📊 Dashboard
@@ -114,12 +114,15 @@ All endpoints are under:
 Examples:
 
 - `POST /api/auth/login`
+- `POST /api/auth/me/profile-image/upload-url`
+- `POST /api/auth/me/profile-image/confirm`
 - `GET /api/lodgings`
 - `GET /api/admin/lodgings`
 - `POST /api/admin/contacts`
-- `POST /api/admin/lodgings/with-images`
-- `PATCH /api/admin/lodgings/:id/with-images`
-- `POST /api/admin/users/:id/profile-image/upload`
+- `POST /api/admin/lodging-image-uploads/upload-url`
+- `POST /api/admin/lodging-image-uploads/confirm`
+- `POST /api/admin/lodgings/:lodgingId/images/upload-url`
+- `POST /api/admin/lodgings/:lodgingId/images/confirm`
 - `GET /api/admin/dashboard/summary`
 - `GET /api/destinations`
 - `GET /api/destinations/:id/context`

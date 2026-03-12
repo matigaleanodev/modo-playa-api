@@ -60,7 +60,7 @@ describe('ContactsService', () => {
     const dto = { name: 'Test' };
     const ownerId = new Types.ObjectId().toString();
 
-    const result = await service.create(dto, ownerId);
+    const result = await service.create(dto, ownerId, 'OWNER');
 
     expect(result).toMatchObject(dto);
     expect((result as { ownerId: Types.ObjectId }).ownerId).toBeInstanceOf(
@@ -75,7 +75,7 @@ describe('ContactsService', () => {
     const dto = { name: 'Test', isDefault: true };
     const ownerId = new Types.ObjectId().toString();
 
-    await service.create(dto, ownerId);
+    await service.create(dto, ownerId, 'OWNER');
 
     expect(FakeContactModel.updateMany).toHaveBeenCalledTimes(1);
     const updateManyCalls = FakeContactModel.updateMany.mock

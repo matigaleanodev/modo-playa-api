@@ -60,7 +60,7 @@ La API implementa un modelo multi-tenant basado en:
 - Creación de usuarios por propietario
 - Listado por owner
 - Actualización y desactivación
-- Imagen de perfil gestionada por backend (multipart)
+- Imagen de perfil propia gestionada con signed upload + confirmación backend
 
 ### 📇 Contacts
 
@@ -77,7 +77,7 @@ La API implementa un modelo multi-tenant basado en:
 - Rango de disponibilidad validado
 - Relación con Contact
 - Gestión de imágenes (hasta 5) con imagen predeterminada
-- Alta/edición unificadas con imágenes vía backend (`multipart/form-data`)
+- Alta con imágenes iniciales mediante uploads pendientes + asociación final en `create`
 - Normalización de imágenes a WebP en backend
 
 ### 📊 Dashboard
@@ -108,12 +108,15 @@ Todos los endpoints están bajo:
 Ejemplos:
 
 - `POST /api/auth/login`
+- `POST /api/auth/me/profile-image/upload-url`
+- `POST /api/auth/me/profile-image/confirm`
 - `GET /api/lodgings`
 - `GET /api/admin/lodgings`
 - `POST /api/admin/contacts`
-- `POST /api/admin/lodgings/with-images`
-- `PATCH /api/admin/lodgings/:id/with-images`
-- `POST /api/admin/users/:id/profile-image/upload`
+- `POST /api/admin/lodging-image-uploads/upload-url`
+- `POST /api/admin/lodging-image-uploads/confirm`
+- `POST /api/admin/lodgings/:lodgingId/images/upload-url`
+- `POST /api/admin/lodgings/:lodgingId/images/confirm`
 - `GET /api/admin/dashboard/summary`
 - `GET /api/destinations`
 - `GET /api/destinations/:id/context`
