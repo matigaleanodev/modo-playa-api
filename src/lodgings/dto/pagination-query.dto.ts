@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  MaxLength,
   IsNumber,
   IsOptional,
   IsString,
@@ -15,6 +16,16 @@ import {
   transformBooleanQuery,
   transformClampedIntQuery,
 } from '@common/utils/query-transformers.util';
+
+const trimStringArrayQuery = ({ value }: { value: unknown }): unknown => {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return (value as unknown[]).map((item: unknown) =>
+    typeof item === 'string' ? item.trim() : item,
+  );
+};
 
 export class PublicLodgingsQueryDto {
   @ApiPropertyOptional({ example: 1 })
@@ -33,7 +44,11 @@ export class PublicLodgingsQueryDto {
 
   @ApiPropertyOptional({ example: 'mar azul' })
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
+  @MaxLength(120)
   search?: string;
 
   @ApiPropertyOptional({
@@ -44,11 +59,16 @@ export class PublicLodgingsQueryDto {
   @IsArray()
   @IsString({ each: true })
   @Type(() => String)
+  @Transform(trimStringArrayQuery)
   tag?: string[];
 
   @ApiPropertyOptional({ example: 'Mar Azul' })
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
+  @MaxLength(80)
   city?: string;
 
   @ApiPropertyOptional({ example: 4 })
@@ -81,6 +101,7 @@ export class PublicLodgingsQueryDto {
   @IsArray()
   @IsEnum(LodgingAmenity, { each: true })
   @Type(() => String)
+  @Transform(trimStringArrayQuery)
   amenities?: LodgingAmenity[];
 }
 

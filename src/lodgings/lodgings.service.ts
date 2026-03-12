@@ -107,6 +107,18 @@ export class LodgingsService {
       tag,
     } = query;
 
+    if (
+      minPrice !== undefined &&
+      maxPrice !== undefined &&
+      minPrice > maxPrice
+    ) {
+      throw new DomainException(
+        'minPrice cannot be greater than maxPrice',
+        ERROR_CODES.INVALID_OBJECT_ID,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const filters: QueryFilter<LodgingDocument> = {
       active: true,
     };
@@ -140,7 +152,7 @@ export class LodgingsService {
     }
 
     if (tag && tag.length > 0) {
-      filters.tags = { $all: tag };
+      filters.tags = { $all: Array.from(new Set(tag)) };
     }
 
     const [data, total] = await Promise.all([

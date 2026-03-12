@@ -88,7 +88,9 @@ describe('Destinations endpoint (e2e)', () => {
 
   it('GET /api/destinations/:id/context devuelve contexto del destino', async () => {
     mockDestinationsService.getContext.mockResolvedValue({
+      destinationId: DestinationId.PAMPAS,
       destination: 'Mar de las Pampas',
+      timezone: 'America/Argentina/Buenos_Aires',
       weather: {
         temperature: 27,
         windSpeed: 14,
@@ -108,7 +110,9 @@ describe('Destinations endpoint (e2e)', () => {
       .get('/api/destinations/pampas/context')
       .expect(200)
       .expect({
+        destinationId: DestinationId.PAMPAS,
         destination: 'Mar de las Pampas',
+        timezone: 'America/Argentina/Buenos_Aires',
         weather: {
           temperature: 27,
           windSpeed: 14,
