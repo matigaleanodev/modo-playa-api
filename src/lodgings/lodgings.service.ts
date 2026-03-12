@@ -114,7 +114,7 @@ export class LodgingsService {
     ) {
       throw new DomainException(
         'minPrice cannot be greater than maxPrice',
-        ERROR_CODES.INVALID_OBJECT_ID,
+        ERROR_CODES.INVALID_PRICE_RANGE,
         HttpStatus.BAD_REQUEST,
       );
     }

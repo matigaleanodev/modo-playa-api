@@ -4,6 +4,7 @@ import { LodgingsService } from './lodgings.service';
 import { Lodging } from './schemas/lodging.schema';
 import { Contact } from '@contacts/schemas/contact.schema';
 import { DomainException } from '@common/exceptions/domain.exception';
+import { ERROR_CODES } from '@common/constants/error-code';
 import { Types } from 'mongoose';
 import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
 import { UpdateLodgingDto } from './dto/update-lodging.dto';
@@ -64,6 +65,26 @@ describe('LodgingsService', () => {
 
   const withPopulate = <T>(result: T) => ({
     populate: jest.fn().mockResolvedValue(result),
+  });
+
+  // -------------------------
+  // findPublicPaginated
+  // -------------------------
+
+  describe('findPublicPaginated', () => {
+    it('debe rechazar rangos de precio publicos invalidos con codigo semantico', async () => {
+      await expect(
+        service.findPublicPaginated({
+          minPrice: 200,
+          maxPrice: 100,
+        }),
+      ).rejects.toMatchObject({
+        response: {
+          message: 'minPrice cannot be greater than maxPrice',
+          code: ERROR_CODES.INVALID_PRICE_RANGE,
+        },
+      });
+    });
   });
 
   // -------------------------

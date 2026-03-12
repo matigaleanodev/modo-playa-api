@@ -3,7 +3,6 @@ import {
   ExecutionContext,
   INestApplication,
   Module,
-  ValidationPipe,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -16,6 +15,7 @@ import { DashboardController } from '../src/dashboard/dashboard.controller';
 import { DashboardService } from '../src/dashboard/dashboard.service';
 import { UsersController } from '../src/users/users.controller';
 import { UsersService } from '../src/users/users.service';
+import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 
 const currentUser: RequestUser = {
   userId: '507f1f77bcf86cd799439012',
@@ -83,13 +83,7 @@ describe('Admin ownership rules (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    app.useGlobalPipes(createAppValidationPipe());
     await app.init();
   });
 

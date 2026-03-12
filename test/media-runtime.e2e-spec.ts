@@ -3,7 +3,6 @@ import {
   ExecutionContext,
   INestApplication,
   Module,
-  ValidationPipe,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
@@ -15,6 +14,7 @@ import { Types } from 'mongoose';
 import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
 import { ERROR_CODES } from '../src/common/constants/error-code';
+import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 import { LodgingDraftImageUploadsAdminController } from '../src/lodgings/controllers/lodging-draft-image-uploads-admin.controller';
 import { LodgingsAdminController } from '../src/lodgings/controllers/lodgings.controller';
 import { LodgingImagesService } from '../src/lodgings/services/lodging-images.service';
@@ -458,13 +458,7 @@ describe('Media runtime flow (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    app.useGlobalPipes(createAppValidationPipe());
     await app.init();
 
     storage = moduleFixture.get(OBJECT_STORAGE_SERVICE);

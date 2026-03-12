@@ -3,7 +3,6 @@ import {
   ExecutionContext,
   INestApplication,
   Module,
-  ValidationPipe,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
@@ -16,6 +15,7 @@ import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
 import { AuthProfileImageController } from '../src/auth/auth-profile-image.controller';
 import { ERROR_CODES } from '../src/common/constants/error-code';
+import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 import {
   IMAGE_PROCESSOR_SERVICE,
   MEDIA_URL_BUILDER,
@@ -354,13 +354,7 @@ describe('Profile media runtime flow (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    app.useGlobalPipes(createAppValidationPipe());
     await app.init();
 
     storage = moduleFixture.get(OBJECT_STORAGE_SERVICE);

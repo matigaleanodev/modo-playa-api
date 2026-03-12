@@ -3,7 +3,6 @@ import {
   ExecutionContext,
   INestApplication,
   Module,
-  ValidationPipe,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -19,6 +18,7 @@ import { LodgingsService } from '../src/lodgings/lodgings.service';
 import { AuthProfileImageController } from '../src/auth/auth-profile-image.controller';
 import { UserProfileImagesService } from '../src/users/services/user-profile-images.service';
 import { MEDIA_URL_BUILDER } from '../src/media/constants/media.tokens';
+import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 
 const mockLodgingImagesService = {
   createDraftUploadUrl: jest.fn(),
@@ -101,13 +101,7 @@ describe('Media flows (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    app.useGlobalPipes(createAppValidationPipe());
     await app.init();
   });
 
@@ -163,7 +157,11 @@ describe('Media flows (e2e)', () => {
         mime: 'image/png',
         size: 1234,
       })
-      .expect(400);
+      .expect(400)
+      .expect({
+        message: 'uploadSessionId must be a string',
+        code: ERROR_CODES.INVALID_UPLOAD_SESSION_ID,
+      });
 
     expect(
       mockLodgingImagesService.createDraftUploadUrl,
@@ -289,7 +287,11 @@ describe('Media flows (e2e)', () => {
         minNights: 2,
         targetOwnerId: 'invalid-owner-id',
       })
-      .expect(400);
+      .expect(400)
+      .expect({
+        message: 'targetOwnerId must be a mongodb id',
+        code: ERROR_CODES.INVALID_TARGET_OWNER_ID,
+      });
 
     expect(mockLodgingsService.create).not.toHaveBeenCalled();
   });
@@ -361,7 +363,11 @@ describe('Media flows (e2e)', () => {
       .send({
         size: 2048,
       })
-      .expect(400);
+      .expect(400)
+      .expect({
+        message: 'mime must be a string',
+        code: ERROR_CODES.INVALID_IMAGE_MIME,
+      });
 
     expect(mockUserProfileImagesService.createUploadUrl).not.toHaveBeenCalled();
   });

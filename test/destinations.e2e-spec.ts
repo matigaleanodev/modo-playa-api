@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import { INestApplication, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -6,6 +5,8 @@ import { App } from 'supertest/types';
 import { DestinationsController } from '../src/destinations/destinations.controller';
 import { DestinationsService } from '../src/destinations/destinations.service';
 import { DestinationId } from '../src/destinations/providers/destination-id.enum';
+import { ERROR_CODES } from '../src/common/constants/error-code';
+import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 
 const mockDestinationsService = {
   getAll: jest.fn(),
@@ -33,13 +34,7 @@ describe('Destinations endpoint (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    app.useGlobalPipes(createAppValidationPipe());
     await app.init();
   });
 
@@ -132,6 +127,11 @@ describe('Destinations endpoint (e2e)', () => {
   it('GET /api/destinations/:id/context devuelve 400 si el id es inválido', async () => {
     await request(app.getHttpServer())
       .get('/api/destinations/nope/context')
-      .expect(400);
+      .expect(400)
+      .expect({
+        message:
+          'id must be one of the following values: gesell, pampas, marazul',
+        code: ERROR_CODES.INVALID_DESTINATION_ID,
+      });
   });
 });

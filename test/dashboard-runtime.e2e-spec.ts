@@ -3,7 +3,6 @@ import {
   ExecutionContext,
   INestApplication,
   Module,
-  ValidationPipe,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
@@ -14,6 +13,7 @@ import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
 import { DashboardController } from '../src/dashboard/dashboard.controller';
 import { DashboardService } from '../src/dashboard/dashboard.service';
+import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 import { Lodging } from '../src/lodgings/schemas/lodging.schema';
 import { Contact } from '../src/contacts/schemas/contact.schema';
 import { User } from '../src/users/schemas/user.schema';
@@ -270,13 +270,7 @@ describe('Dashboard runtime flow (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    app.useGlobalPipes(createAppValidationPipe());
     await app.init();
   });
 
