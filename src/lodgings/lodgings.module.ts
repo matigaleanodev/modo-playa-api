@@ -13,7 +13,7 @@ import {
   PendingLodgingDraftImageUpload,
   PendingLodgingDraftImageUploadSchema,
 } from './schemas/pending-lodging-draft-image-upload.schema';
-import { LodgingDraftImageUploadsAdminController } from './controllers/lodging-draft-image-uploads.controller';
+import { LodgingDraftImageUploadsAdminController } from './controllers/lodging-draft-image-uploads-admin.controller';
 
 @Module({
   imports: [

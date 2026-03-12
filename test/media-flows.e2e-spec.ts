@@ -12,7 +12,7 @@ import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
 import { DomainException } from '../src/common/exceptions/domain.exception';
 import { ERROR_CODES } from '../src/common/constants/error-code';
-import { LodgingDraftImageUploadsAdminController } from '../src/lodgings/controllers/lodging-draft-image-uploads.controller';
+import { LodgingDraftImageUploadsAdminController } from '../src/lodgings/controllers/lodging-draft-image-uploads-admin.controller';
 import { LodgingsAdminController } from '../src/lodgings/controllers/lodgings.controller';
 import { LodgingImagesService } from '../src/lodgings/services/lodging-images.service';
 import { LodgingsService } from '../src/lodgings/lodgings.service';

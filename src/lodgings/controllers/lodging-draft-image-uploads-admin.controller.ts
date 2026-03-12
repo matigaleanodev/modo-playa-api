@@ -11,7 +11,7 @@ import {
   ApiConfirmDraftLodgingImageUploadDoc,
   ApiCreateDraftLodgingImageUploadUrlDoc,
   ApiLodgingDraftImageUploadsAdminController,
-} from '@lodgings/swagger/lodging-draft-image-uploads.swagger';
+} from '@lodgings/swagger/lodging-draft-image-uploads-admin.swagger';
 
 @ApiLodgingDraftImageUploadsAdminController()
 @Controller('admin/lodging-image-uploads')

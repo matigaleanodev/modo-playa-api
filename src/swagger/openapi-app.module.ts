@@ -9,7 +9,7 @@ import { DashboardService } from '../dashboard/dashboard.service';
 import { DestinationsController } from '../destinations/destinations.controller';
 import { DestinationsService } from '../destinations/destinations.service';
 import { LodgingImagesAdminController } from '../lodgings/controllers/lodging-images-admin.controller';
-import { LodgingDraftImageUploadsAdminController } from '../lodgings/controllers/lodging-draft-image-uploads.controller';
+import { LodgingDraftImageUploadsAdminController } from '../lodgings/controllers/lodging-draft-image-uploads-admin.controller';
 import { LodgingsPublicController } from '../lodgings/controllers/lodgings-public.controller';
 import { LodgingsAdminController } from '../lodgings/controllers/lodgings.controller';
 import { LodgingImagesService } from '../lodgings/services/lodging-images.service';
@@ -120,7 +120,7 @@ const noop = () => undefined;
       provide: UsersService,
       useValue: {
         createUser: noop,
-        findAllByOwner: noop,
+        findAllByScope: noop,
         findById: noop,
         updateUser: noop,
       },
