@@ -38,3 +38,7 @@ PendingLodgingDraftImageUploadSchema.index(
   { ownerId: 1, uploadSessionId: 1, imageId: 1 },
   { unique: true },
 );
+PendingLodgingDraftImageUploadSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 },
+);

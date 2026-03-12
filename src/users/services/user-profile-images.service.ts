@@ -48,7 +48,8 @@ export class UserProfileImagesService {
     this.assertAllowedMime(dto.mime);
     this.assertSizeWithinLimit(dto.size, this.getUserProfileMaxBytes());
 
-    await this.findOwnedUserOrThrow(ownerId, userId);
+    const user = await this.findOwnedUserOrThrow(ownerId, userId);
+    await this.cleanupExpiredPendingUploads(user);
 
     const imageId = randomUUID();
     const stagingKey = this.buildStagingKey(userId, imageId);
@@ -115,6 +116,23 @@ export class UserProfileImagesService {
     }
 
     const expectedStagingKey = this.buildStagingKey(userId, dto.imageId);
+    if (dto.key !== expectedStagingKey) {
+      throw new DomainException(
+        'Invalid profile image upload key',
+        ERROR_CODES.LODGING_IMAGE_UPLOAD_INVALID_KEY,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const removedExpiredIds = await this.cleanupExpiredPendingUploads(user);
+    if (removedExpiredIds.has(dto.imageId)) {
+      throw new DomainException(
+        'Pending profile image upload expired',
+        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const pendingUploads = this.getPendingUploads(user);
     const pending = pendingUploads.find((item) => item.imageId === dto.imageId);
 
@@ -365,6 +383,42 @@ export class UserProfileImagesService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private async cleanupExpiredPendingUploads(
+    user: UserDocument,
+  ): Promise<Set<string>> {
+    const pendingUploads = this.getPendingUploads(user);
+    if (pendingUploads.length === 0) {
+      return new Set<string>();
+    }
+
+    const now = Date.now();
+    const expired = pendingUploads.filter(
+      (pending) => new Date(pending.expiresAt).getTime() < now,
+    );
+
+    if (expired.length === 0) {
+      return new Set<string>();
+    }
+
+    user.pendingProfileImageUploads = pendingUploads.filter(
+      (pending) =>
+        !expired.some((candidate) => candidate.imageId === pending.imageId),
+    );
+    await user.save();
+
+    await Promise.all(
+      expired.map(async (pending) => {
+        try {
+          await this.storage.deleteObject(pending.stagingKey);
+        } catch {
+          // best effort cleanup
+        }
+      }),
+    );
+
+    return new Set(expired.map((pending) => pending.imageId));
   }
 
   private toProfileImageResponse(

@@ -1,7 +1,7 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, QueryFilter } from 'mongoose';
+import { Model, QueryFilter, Types } from 'mongoose';
 import { randomUUID } from 'crypto';
 import { PassThrough } from 'stream';
 import { pipeline } from 'stream/promises';
@@ -66,6 +66,8 @@ export class LodgingImagesService {
       httpStatus: HttpStatus.BAD_REQUEST,
     });
 
+    await this.cleanupExpiredDraftUploads(ownerObjectId, dto.uploadSessionId);
+
     const pendingCount = await this.pendingDraftUploadModel.countDocuments({
       ownerId: ownerObjectId,
       uploadSessionId: dto.uploadSessionId,
@@ -124,6 +126,15 @@ export class LodgingImagesService {
       };
     }
 
+    if (new Date(pending.expiresAt).getTime() < Date.now()) {
+      await this.deleteDraftUploads([pending]);
+      throw new DomainException(
+        'Pending lodging draft image upload expired',
+        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     this.policy.assertPendingUploadValid(
       {
         imageId: pending.imageId,
@@ -167,7 +178,12 @@ export class LodgingImagesService {
     this.assertAllowedMime(dto.mime);
     this.assertSizeWithinLimit(dto.size, this.getLodgingMaxBytes());
 
-    await this.findOwnedLodgingOrThrow(lodgingId, ownerId, role);
+    const lodging = await this.findOwnedLodgingOrThrow(
+      lodgingId,
+      ownerId,
+      role,
+    );
+    await this.cleanupExpiredLodgingPendingUploads(lodging);
 
     const imageId = randomUUID();
     const stagingKey = this.buildStagingKey(lodgingId, imageId);
@@ -263,6 +279,24 @@ export class LodgingImagesService {
     }
 
     const expectedStagingKey = this.buildStagingKey(lodgingId, dto.imageId);
+    if (dto.key !== expectedStagingKey) {
+      throw new DomainException(
+        'Invalid lodging image upload key',
+        ERROR_CODES.LODGING_IMAGE_UPLOAD_INVALID_KEY,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const removedExpiredIds =
+      await this.cleanupExpiredLodgingPendingUploads(lodging);
+    if (removedExpiredIds.has(dto.imageId)) {
+      throw new DomainException(
+        'Pending lodging image upload expired',
+        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const pending = this.getPendingUploads(lodging).find(
       (item) => item.imageId === dto.imageId,
     );
@@ -513,6 +547,8 @@ export class LodgingImagesService {
       errorCode: ERROR_CODES.INVALID_OBJECT_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
+
+    await this.cleanupExpiredDraftUploads(ownerObjectId, uploadSessionId);
 
     const pendingUploads = await this.pendingDraftUploadModel.find({
       ownerId: ownerObjectId,
@@ -790,6 +826,77 @@ export class LodgingImagesService {
     }
 
     return pending;
+  }
+
+  private async cleanupExpiredDraftUploads(
+    ownerId: Types.ObjectId,
+    uploadSessionId: string,
+  ): Promise<void> {
+    const expired = await this.pendingDraftUploadModel.find({
+      ownerId,
+      uploadSessionId,
+      expiresAt: { $lt: new Date() },
+    });
+
+    await this.deleteDraftUploads(expired);
+  }
+
+  private async deleteDraftUploads(
+    uploads: PendingLodgingDraftImageUploadDocument[],
+  ): Promise<void> {
+    if (uploads.length === 0) {
+      return;
+    }
+
+    await this.pendingDraftUploadModel.deleteMany({
+      _id: { $in: uploads.map((upload) => upload._id) },
+    });
+
+    await Promise.all(
+      uploads.map(async (upload) => {
+        try {
+          await this.storage.deleteObject(upload.stagingKey);
+        } catch {
+          // best effort cleanup
+        }
+      }),
+    );
+  }
+
+  private async cleanupExpiredLodgingPendingUploads(
+    lodging: LodgingDocument,
+  ): Promise<Set<string>> {
+    const pendingUploads = this.getPendingUploads(lodging);
+    if (pendingUploads.length === 0) {
+      return new Set<string>();
+    }
+
+    const now = Date.now();
+    const expired = pendingUploads.filter(
+      (pending) => new Date(pending.expiresAt).getTime() < now,
+    );
+
+    if (expired.length === 0) {
+      return new Set<string>();
+    }
+
+    lodging.pendingImageUploads = pendingUploads.filter(
+      (pending) =>
+        !expired.some((candidate) => candidate.imageId === pending.imageId),
+    );
+    await lodging.save();
+
+    await Promise.all(
+      expired.map(async (pending) => {
+        try {
+          await this.storage.deleteObject(pending.stagingKey);
+        } catch {
+          // best effort cleanup
+        }
+      }),
+    );
+
+    return new Set(expired.map((pending) => pending.imageId));
   }
 
   private async ensureLodgingDefaultInvariant(

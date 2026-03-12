@@ -14,6 +14,7 @@ import { Readable, PassThrough } from 'stream';
 import { Types } from 'mongoose';
 import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
+import { ERROR_CODES } from '../src/common/constants/error-code';
 import { LodgingDraftImageUploadsAdminController } from '../src/lodgings/controllers/lodging-draft-image-uploads.controller';
 import { LodgingsAdminController } from '../src/lodgings/controllers/lodgings.controller';
 import { LodgingImagesService } from '../src/lodgings/services/lodging-images.service';
@@ -330,26 +331,51 @@ class InMemoryPendingDraftModel {
   static find(filters: {
     ownerId: Types.ObjectId;
     uploadSessionId: string;
-    imageId: { $in: string[] };
+    imageId?: { $in: string[] };
+    expiresAt?: { $lt: Date };
   }) {
     return Promise.resolve(
       InMemoryPendingDraftModel.records.filter(
         (record) =>
           record.ownerId.equals(filters.ownerId) &&
           record.uploadSessionId === filters.uploadSessionId &&
-          filters.imageId.$in.includes(record.imageId),
+          (!filters.imageId || filters.imageId.$in.includes(record.imageId)) &&
+          (!filters.expiresAt ||
+            record.expiresAt.getTime() < filters.expiresAt.$lt.getTime()),
       ),
     );
   }
 
   static deleteMany(filters: {
-    _id: { $in: Types.ObjectId[] };
+    _id?: { $in: Types.ObjectId[] };
+    ownerId?: Types.ObjectId;
+    uploadSessionId?: string;
+    expiresAt?: { $lt: Date };
   }): Promise<void> {
     InMemoryPendingDraftModel.records =
-      InMemoryPendingDraftModel.records.filter(
-        (record) =>
-          !filters._id.$in.some((candidate) => candidate.equals(record._id)),
-      );
+      InMemoryPendingDraftModel.records.filter((record) => {
+        if (filters._id) {
+          return !filters._id.$in.some((candidate) =>
+            candidate.equals(record._id),
+          );
+        }
+        if (filters.ownerId && !record.ownerId.equals(filters.ownerId)) {
+          return true;
+        }
+        if (
+          filters.uploadSessionId &&
+          record.uploadSessionId !== filters.uploadSessionId
+        ) {
+          return true;
+        }
+        if (
+          filters.expiresAt &&
+          record.expiresAt.getTime() >= filters.expiresAt.$lt.getTime()
+        ) {
+          return true;
+        }
+        return false;
+      });
     return Promise.resolve();
   }
 }
@@ -518,5 +544,40 @@ describe('Media runtime flow (e2e)', () => {
     expect(responseBody.mediaImages[0].isDefault).toBe(true);
     expect(responseBody.mainImage).toContain('/lodgings/');
     expect(responseBody.images).toHaveLength(1);
+  });
+
+  it('rechaza confirm de draft expirado y limpia pending + staging', async () => {
+    const uploadResponse = await request(app.getHttpServer())
+      .post('/api/admin/lodging-image-uploads/upload-url')
+      .send({
+        uploadSessionId: 'runtime-session-expired',
+        mime: 'image/png',
+        size: 12,
+      })
+      .expect(201);
+
+    const { imageId, uploadKey } = uploadResponse.body as {
+      imageId: string;
+      uploadKey: string;
+    };
+
+    const pending = InMemoryPendingDraftModel.records[0];
+    pending.expiresAt = new Date(Date.now() - 60_000);
+    storage.seedObject(uploadKey, Buffer.from('fake-image'), 'image/png');
+
+    await request(app.getHttpServer())
+      .post('/api/admin/lodging-image-uploads/confirm')
+      .send({
+        uploadSessionId: 'runtime-session-expired',
+        imageId,
+      })
+      .expect(400)
+      .expect({
+        message: 'Pending lodging draft image upload expired',
+        code: ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+      });
+
+    expect(InMemoryPendingDraftModel.records).toHaveLength(0);
+    expect(storage.objects.has(uploadKey)).toBe(false);
   });
 });
