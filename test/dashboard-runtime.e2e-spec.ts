@@ -348,7 +348,7 @@ describe('Dashboard runtime flow (e2e)', () => {
     expect(body.metrics.lodgings.withAvailability).toBe(1);
     expect(body.metrics.contacts.incomplete).toBe(1);
     expect(body.metrics.users.pendingActivation).toBe(1);
-    expect(body.recentActivity.source).toBe('derived');
+    expect(body.recentActivity.source).toBe('timestamps');
     expect(body.recentActivity.items.length).toBeGreaterThan(0);
     expect(body.alerts.map((alert) => alert.code)).toEqual(
       expect.arrayContaining(['CONTACT_INCOMPLETE', 'USER_PENDING_ACTIVATION']),

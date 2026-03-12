@@ -85,7 +85,7 @@ La API implementa un modelo multi-tenant basado en:
 - Resumen consolidado para administración
 - Métricas de alojamientos, contactos y usuarios
 - Alertas operativas priorizadas (ej. crear contacto antes de alojamientos)
-- Actividad reciente derivada por owner
+- Actividad reciente derivada heurísticamente desde `createdAt/updatedAt` (`source=timestamps`), no auditoría persistida
 
 ### 🌤️ Destinations
 
@@ -127,6 +127,16 @@ La API también incluye endpoints administrativos para gestión de media
 La validación global usa `whitelist + forbidNonWhitelisted`, por lo que
 se rechazan campos no definidos en DTOs (por ejemplo, no enviar `id` en
 `POST /api/admin/contacts`).
+
+Los errores de contrato y de dominio exponen `code` explícitos en la
+respuesta (por ejemplo `INVALID_DESTINATION_ID`,
+`INVALID_TARGET_OWNER_ID`, `INVALID_PRICE_RANGE`,
+`PROFILE_IMAGE_FORBIDDEN_FOR_SUPERADMIN`) para evitar depender solo del
+texto de `message`.
+
+`auth/me/profile-image` está reservado al usuario `OWNER` autenticado.
+`SUPERADMIN` no puede operar la imagen de perfil de usuarios por ese
+endpoint.
 
 ---
 

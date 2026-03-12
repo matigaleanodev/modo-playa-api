@@ -82,7 +82,7 @@ Multi-tenancy is implemented through:
 - Consolidated admin summary
 - Lodgings, contacts, and users metrics
 - Prioritized operational alerts (for example, create a contact before lodgings)
-- Owner-scoped recent activity feed
+- Recent activity heuristically derived from `createdAt/updatedAt` (`source=timestamps`), not a persisted audit log
 
 ### 🌤️ Destinations
 
@@ -130,6 +130,14 @@ Examples:
 Global validation uses `whitelist + forbidNonWhitelisted`, so undefined
 fields in DTOs are rejected (for example, do not send `id` in
 `POST /api/admin/contacts`).
+
+Contract and domain errors expose explicit response `code` values (for
+example `INVALID_DESTINATION_ID`, `INVALID_TARGET_OWNER_ID`,
+`INVALID_PRICE_RANGE`, `PROFILE_IMAGE_FORBIDDEN_FOR_SUPERADMIN`) so
+clients do not need to rely only on `message` text.
+
+`auth/me/profile-image` is restricted to the authenticated `OWNER`.
+`SUPERADMIN` cannot manage user profile images through that endpoint.
 
 ---
 

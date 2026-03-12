@@ -448,7 +448,7 @@ export class DashboardService {
 
     return {
       items,
-      source: items.length > 0 ? 'derived' : 'none',
+      source: items.length > 0 ? 'timestamps' : 'none',
     };
   }
 

@@ -141,7 +141,7 @@ describe('DashboardService', () => {
     expect(result.metrics.contacts.incomplete).toBe(1);
     expect(result.metrics.users.pendingActivation).toBe(1);
     expect(result.distributions.lodgingsByCity).toHaveLength(1);
-    expect(result.recentActivity.source).toBe('derived');
+    expect(result.recentActivity.source).toBe('timestamps');
     expect(result.alerts.map((a) => a.code)).toEqual(
       expect.arrayContaining([
         'LODGING_WITHOUT_CONTACT',
