@@ -84,18 +84,21 @@ export class UsersService {
     }
   }
 
-  async findAllByOwner(
+  async findAllByScope(
     ownerId: string,
+    role: UserRole,
     query: UsersQueryDto,
   ): Promise<PaginatedResponse<UserDocument>> {
     const { page = 1, limit = 10 } = query;
-    const filters = {
-      ownerId: toObjectIdOrThrow(ownerId, {
+    const filters: { ownerId?: ReturnType<typeof toObjectIdOrThrow> } = {};
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
         errorCode: ERROR_CODES.INVALID_OBJECT_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
-      }),
-    };
+      });
+    }
 
     const [data, total] = await Promise.all([
       this.userModel
@@ -110,19 +113,31 @@ export class UsersService {
     return { data, total, page, limit };
   }
 
-  async findById(ownerId: string, userId: string): Promise<UserDocument> {
-    const user = await this.userModel.findOne({
+  async findById(
+    ownerId: string,
+    userId: string,
+    role: UserRole = 'OWNER',
+  ): Promise<UserDocument> {
+    const filters: {
+      _id: ReturnType<typeof toObjectIdOrThrow>;
+      ownerId?: ReturnType<typeof toObjectIdOrThrow>;
+    } = {
       _id: toObjectIdOrThrow(userId, {
         message: 'Invalid user id',
         errorCode: ERROR_CODES.INVALID_OBJECT_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
-      ownerId: toObjectIdOrThrow(ownerId, {
+    };
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
         errorCode: ERROR_CODES.INVALID_OBJECT_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
-      }),
-    });
+      });
+    }
+
+    const user = await this.userModel.findOne(filters);
 
     if (!user) {
       throw new DomainException(
@@ -139,20 +154,29 @@ export class UsersService {
     ownerId: string,
     userId: string,
     dto: UpdateUserDto,
+    role: UserRole = 'OWNER',
   ): Promise<UserDocument> {
+    const filters: {
+      _id: ReturnType<typeof toObjectIdOrThrow>;
+      ownerId?: ReturnType<typeof toObjectIdOrThrow>;
+    } = {
+      _id: toObjectIdOrThrow(userId, {
+        message: 'Invalid user id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
+    };
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
+    }
+
     const updated = await this.userModel.findOneAndUpdate(
-      {
-        _id: toObjectIdOrThrow(userId, {
-          message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-          httpStatus: HttpStatus.BAD_REQUEST,
-        }),
-        ownerId: toObjectIdOrThrow(ownerId, {
-          message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-          httpStatus: HttpStatus.BAD_REQUEST,
-        }),
-      },
+      filters,
       { $set: dto },
       { returnDocument: 'after', runValidators: true },
     );

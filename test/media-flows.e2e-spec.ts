@@ -10,6 +10,8 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
+import { DomainException } from '../src/common/exceptions/domain.exception';
+import { ERROR_CODES } from '../src/common/constants/error-code';
 import { LodgingDraftImageUploadsAdminController } from '../src/lodgings/controllers/lodging-draft-image-uploads.controller';
 import { LodgingsAdminController } from '../src/lodgings/controllers/lodgings.controller';
 import { LodgingImagesService } from '../src/lodgings/services/lodging-images.service';
@@ -168,6 +170,57 @@ describe('Media flows (e2e)', () => {
     ).not.toHaveBeenCalled();
   });
 
+  it('POST /api/admin/lodging-image-uploads/confirm confirma el upload pendiente del borrador', async () => {
+    mockLodgingImagesService.confirmDraftUpload.mockResolvedValue({
+      imageId: 'image-1',
+      uploadSessionId: 'draft-session-1',
+      confirmed: true,
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/admin/lodging-image-uploads/confirm')
+      .send({
+        uploadSessionId: 'draft-session-1',
+        imageId: 'image-1',
+      })
+      .expect(201)
+      .expect({
+        imageId: 'image-1',
+        uploadSessionId: 'draft-session-1',
+        confirmed: true,
+      });
+
+    expect(mockLodgingImagesService.confirmDraftUpload).toHaveBeenCalledWith(
+      {
+        uploadSessionId: 'draft-session-1',
+        imageId: 'image-1',
+      },
+      authenticatedUser.ownerId,
+    );
+  });
+
+  it('POST /api/admin/lodging-image-uploads/confirm devuelve error de dominio cuando el pending expira', async () => {
+    mockLodgingImagesService.confirmDraftUpload.mockRejectedValue(
+      new DomainException(
+        'Pending lodging draft image upload expired',
+        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        400,
+      ),
+    );
+
+    await request(app.getHttpServer())
+      .post('/api/admin/lodging-image-uploads/confirm')
+      .send({
+        uploadSessionId: 'draft-session-1',
+        imageId: 'image-1',
+      })
+      .expect(400)
+      .expect({
+        message: 'Pending lodging draft image upload expired',
+        code: ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+      });
+  });
+
   it('POST /api/admin/lodgings permite alta con pendingImageIds, uploadSessionId y targetOwnerId', async () => {
     mockLodgingsService.create.mockResolvedValue({
       _id: 'lodging-1',
@@ -219,6 +272,61 @@ describe('Media flows (e2e)', () => {
     );
   });
 
+  it('POST /api/admin/lodgings rechaza targetOwnerId invalido por validacion global', async () => {
+    await request(app.getHttpServer())
+      .post('/api/admin/lodgings')
+      .send({
+        title: 'Cabana',
+        description: 'Desc',
+        location: 'Loc',
+        city: 'Mar Azul',
+        type: 'house',
+        price: 100,
+        priceUnit: 'night',
+        maxGuests: 4,
+        bedrooms: 2,
+        bathrooms: 1,
+        minNights: 2,
+        targetOwnerId: 'invalid-owner-id',
+      })
+      .expect(400);
+
+    expect(mockLodgingsService.create).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/admin/lodgings devuelve error de dominio si pendingImageIds llega sin uploadSessionId', async () => {
+    mockLodgingsService.create.mockRejectedValue(
+      new DomainException(
+        'uploadSessionId is required when pendingImageIds are provided',
+        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
+        400,
+      ),
+    );
+
+    await request(app.getHttpServer())
+      .post('/api/admin/lodgings')
+      .send({
+        title: 'Cabana',
+        description: 'Desc',
+        location: 'Loc',
+        city: 'Mar Azul',
+        type: 'house',
+        price: 100,
+        priceUnit: 'night',
+        maxGuests: 4,
+        bedrooms: 2,
+        bathrooms: 1,
+        minNights: 2,
+        pendingImageIds: ['image-1'],
+      })
+      .expect(400)
+      .expect({
+        message:
+          'uploadSessionId is required when pendingImageIds are provided',
+        code: ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
+      });
+  });
+
   it('POST /api/auth/me/profile-image/upload-url usa el usuario autenticado', async () => {
     mockUserProfileImagesService.createUploadUrl.mockResolvedValue({
       imageId: 'profile-1',
@@ -245,6 +353,17 @@ describe('Media flows (e2e)', () => {
         size: 2048,
       },
     );
+  });
+
+  it('POST /api/auth/me/profile-image/upload-url valida payload requerido', async () => {
+    await request(app.getHttpServer())
+      .post('/api/auth/me/profile-image/upload-url')
+      .send({
+        size: 2048,
+      })
+      .expect(400);
+
+    expect(mockUserProfileImagesService.createUploadUrl).not.toHaveBeenCalled();
   });
 
   it('POST /api/auth/me/profile-image/confirm confirma la imagen propia', async () => {
@@ -281,6 +400,28 @@ describe('Media flows (e2e)', () => {
         height: 400,
       },
     );
+  });
+
+  it('POST /api/auth/me/profile-image/confirm devuelve error de dominio si el pending expira', async () => {
+    mockUserProfileImagesService.confirmUpload.mockRejectedValue(
+      new DomainException(
+        'Pending profile image upload expired',
+        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        400,
+      ),
+    );
+
+    await request(app.getHttpServer())
+      .post('/api/auth/me/profile-image/confirm')
+      .send({
+        imageId: 'profile-1',
+        key: 'users/u/profile/profile-1/staging-upload',
+      })
+      .expect(400)
+      .expect({
+        message: 'Pending profile image upload expired',
+        code: ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+      });
   });
 
   it('DELETE /api/auth/me/profile-image elimina la imagen propia', async () => {

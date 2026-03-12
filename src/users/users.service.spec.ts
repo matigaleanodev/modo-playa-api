@@ -147,7 +147,7 @@ describe('UsersService', () => {
       exec: jest.fn().mockResolvedValue(0),
     });
 
-    const result = await service.findAllByOwner(ownerId, {
+    const result = await service.findAllByScope(ownerId, 'OWNER', {
       page: 1,
       limit: 10,
     });
@@ -170,6 +170,7 @@ describe('UsersService', () => {
     const result = await service.findById(
       ownerId,
       new Types.ObjectId().toString(),
+      'OWNER',
     );
 
     expect(result).toBeDefined();
@@ -190,6 +191,7 @@ describe('UsersService', () => {
       {
         firstName: 'Juan',
       },
+      'OWNER',
     );
 
     expect(result.firstName).toBe('Juan');
@@ -199,8 +201,30 @@ describe('UsersService', () => {
     userModelMock.findOneAndUpdate.mockResolvedValue(null);
 
     await expect(
-      service.updateUser(ownerId, new Types.ObjectId().toString(), {}),
+      service.updateUser(ownerId, new Types.ObjectId().toString(), {}, 'OWNER'),
     ).rejects.toBeInstanceOf(DomainException);
+  });
+
+  it('SUPERADMIN puede listar sin filtro por ownerId', async () => {
+    userModelMock.find.mockReturnValue({
+      sort: () => ({
+        skip: () => ({
+          limit: () => ({
+            exec: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+    });
+    userModelMock.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(0),
+    });
+
+    await service.findAllByScope(ownerId, 'SUPERADMIN', {
+      page: 1,
+      limit: 10,
+    });
+
+    expect(userModelMock.find).toHaveBeenCalledWith({});
   });
 
   // -------------------------
