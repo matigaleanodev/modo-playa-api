@@ -176,6 +176,22 @@ describe('UsersService', () => {
     expect(result).toBeDefined();
   });
 
+  it('SUPERADMIN puede buscar por id sin filtro por ownerId', async () => {
+    const userId = new Types.ObjectId().toString();
+    userModelMock.findOne.mockResolvedValue({ _id: userId });
+
+    await service.findById(ownerId, userId, 'SUPERADMIN');
+
+    const findOneCalls = userModelMock.findOne.mock.calls as Array<[unknown]>;
+    const filters = findOneCalls[0][0] as {
+      _id: Types.ObjectId;
+      ownerId?: Types.ObjectId;
+    };
+
+    expect(filters._id).toBeInstanceOf(Types.ObjectId);
+    expect(filters.ownerId).toBeUndefined();
+  });
+
   // -------------------------
   // UPDATE
   // -------------------------
@@ -203,6 +219,36 @@ describe('UsersService', () => {
     await expect(
       service.updateUser(ownerId, new Types.ObjectId().toString(), {}, 'OWNER'),
     ).rejects.toBeInstanceOf(DomainException);
+  });
+
+  it('SUPERADMIN puede actualizar sin filtro por ownerId', async () => {
+    const userId = new Types.ObjectId().toString();
+    userModelMock.findOneAndUpdate.mockResolvedValue({
+      firstName: 'Support',
+    });
+
+    await service.updateUser(
+      ownerId,
+      userId,
+      { firstName: 'Support' },
+      'SUPERADMIN',
+    );
+
+    const findOneAndUpdateCalls = userModelMock.findOneAndUpdate.mock
+      .calls as Array<[unknown, unknown, unknown]>;
+    const filters = findOneAndUpdateCalls[0][0] as {
+      _id: Types.ObjectId;
+      ownerId?: Types.ObjectId;
+    };
+    const update = findOneAndUpdateCalls[0][1] as {
+      $set: { firstName: string };
+    };
+
+    expect(filters._id).toBeInstanceOf(Types.ObjectId);
+    expect(filters.ownerId).toBeUndefined();
+    expect(update).toEqual({
+      $set: { firstName: 'Support' },
+    });
   });
 
   it('SUPERADMIN puede listar sin filtro por ownerId', async () => {

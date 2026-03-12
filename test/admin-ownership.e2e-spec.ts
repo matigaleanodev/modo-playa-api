@@ -12,6 +12,8 @@ import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
 import { ContactsController } from '../src/contacts/contacts.controller';
 import { ContactsService } from '../src/contacts/contacts.service';
+import { DashboardController } from '../src/dashboard/dashboard.controller';
+import { DashboardService } from '../src/dashboard/dashboard.service';
 import { UsersController } from '../src/users/users.controller';
 import { UsersService } from '../src/users/users.service';
 
@@ -37,6 +39,10 @@ const mockUsersService = {
   updateUser: jest.fn(),
 };
 
+const mockDashboardService = {
+  getSummary: jest.fn(),
+};
+
 class TestJwtAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<{ user: RequestUser }>();
@@ -46,7 +52,7 @@ class TestJwtAuthGuard implements CanActivate {
 }
 
 @Module({
-  controllers: [ContactsController, UsersController],
+  controllers: [ContactsController, UsersController, DashboardController],
   providers: [
     {
       provide: ContactsService,
@@ -55,6 +61,10 @@ class TestJwtAuthGuard implements CanActivate {
     {
       provide: UsersService,
       useValue: mockUsersService,
+    },
+    {
+      provide: DashboardService,
+      useValue: mockDashboardService,
     },
   ],
 })
@@ -270,6 +280,68 @@ describe('Admin ownership rules (e2e)', () => {
         firstName: 'Owner',
       },
       'OWNER',
+    );
+  });
+
+  it('GET /api/admin/dashboard/summary delega resumen global cuando opera SUPERADMIN', async () => {
+    currentUser.role = 'SUPERADMIN';
+    mockDashboardService.getSummary.mockResolvedValue({
+      generatedAt: '2026-03-12T18:00:00.000Z',
+      ownerScope: {
+        ownerId: currentUser.ownerId,
+        role: 'SUPERADMIN',
+      },
+      metrics: {
+        lodgings: {
+          total: 5,
+          active: 4,
+          inactive: 1,
+          withAvailability: 3,
+          withoutContact: 1,
+        },
+        contacts: {
+          total: 2,
+          active: 2,
+          inactive: 0,
+          defaults: 1,
+          withEmail: 2,
+          withWhatsapp: 1,
+          incomplete: 0,
+        },
+        users: {
+          total: 4,
+          active: 4,
+          inactive: 0,
+          passwordSet: 3,
+          pendingActivation: 1,
+          neverLoggedIn: 1,
+        },
+      },
+      distributions: {
+        lodgingsByCity: [],
+        lodgingsByType: [],
+      },
+      recentActivity: {
+        items: [],
+        source: 'none',
+      },
+      alerts: [],
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/admin/dashboard/summary')
+      .expect(200)
+      .expect((response) => {
+        const body = response.body as {
+          ownerScope: { role: 'OWNER' | 'SUPERADMIN' };
+        };
+
+        expect(body.ownerScope.role).toBe('SUPERADMIN');
+      });
+
+    expect(mockDashboardService.getSummary).toHaveBeenCalledWith(
+      currentUser.ownerId,
+      'SUPERADMIN',
     );
   });
 });
