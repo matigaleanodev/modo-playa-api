@@ -11,17 +11,18 @@ import {
 import { AuthService } from './auth.service';
 import { ActivateDto } from './dto/activate.dto';
 import { RequestUser } from './interfaces/request-user.interface';
-import { SetPasswordDto } from './dto/set-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guard/auth.guard';
-import { ChangePasswordDto } from './dto/chage-password.dto';
-import { VerifyResetCodeDto } from './dto/verifiy-reset-code.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
-import { IdentifierDto } from './dto/identifier.dto';
+import { AuthIdentifierDto } from './dto/auth-identifier.dto';
 import { MessageResponseDto } from '../swagger/dto/message-response.dto';
 import { AccessTokenResponseDto } from '../swagger/dto/access-token-response.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { AuthUserResponseDto } from './dto/auth-user-response.dto';
+import { SetInitialPasswordDto } from './dto/set-initial-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import {
   ApiActivateDoc,
   ApiAuthController,
@@ -45,7 +46,7 @@ export class AuthController {
   @ApiRequestActivationDoc()
   @Post('request-activation')
   async requestActivation(
-    @Body() dto: IdentifierDto,
+    @Body() dto: AuthIdentifierDto,
   ): Promise<MessageResponseDto> {
     await this.authService.requestActivation(dto.identifier);
 
@@ -65,7 +66,7 @@ export class AuthController {
   @Post('set-password')
   setPassword(
     @Request() req: { user: RequestUser },
-    @Body() dto: SetPasswordDto,
+    @Body() dto: SetInitialPasswordDto,
   ): Promise<AuthResponseDto> {
     return this.authService.setPassword(req.user, dto);
   }
@@ -95,7 +96,7 @@ export class AuthController {
 
   @ApiForgotPasswordDoc()
   @Post('forgot-password')
-  forgotPassword(@Body() dto: IdentifierDto): Promise<MessageResponseDto> {
+  forgotPassword(@Body() dto: AuthIdentifierDto): Promise<MessageResponseDto> {
     return this.authService.forgotPassword(dto);
   }
 
@@ -112,7 +113,7 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(
     @Request() req: { user: RequestUser },
-    @Body() dto: SetPasswordDto,
+    @Body() dto: ResetPasswordDto,
   ): Promise<MessageResponseDto> {
     return this.authService.resetPassword(req.user, dto);
   }

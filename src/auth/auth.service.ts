@@ -15,15 +15,16 @@ import { UserDocument } from '@users/schemas/user.schema';
 
 import { AuthException } from '@common/exceptions/auth.exception';
 import { ERROR_CODES } from '@common/constants/error-code';
-import { SetPasswordDto } from './interfaces/set-password.interface';
 import { AuthUserResponse } from './interfaces/auth-user.interface';
-import { ChangePasswordDto } from './dto/chage-password.dto';
-import { VerifyResetCodeDto } from './dto/verifiy-reset-code.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 import { MailService } from '@mail/mail.service';
-import { IdentifierDto } from './dto/identifier.dto';
+import { AuthIdentifierDto } from './dto/auth-identifier.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { MEDIA_URL_BUILDER } from '@media/constants/media.tokens';
 import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
+import { SetInitialPasswordDto } from './dto/set-initial-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -130,7 +131,7 @@ export class AuthService {
 
   async setPassword(
     user: RequestUser,
-    dto: SetPasswordDto,
+    dto: SetInitialPasswordDto,
   ): Promise<AuthResponse> {
     if (user.purpose !== 'PASSWORD_SETUP') {
       throw new AuthException(
@@ -377,7 +378,7 @@ export class AuthService {
     return this.buildAuthResponse(dbUser, accessToken, refreshToken);
   }
 
-  async forgotPassword(dto: IdentifierDto): Promise<{ message: string }> {
+  async forgotPassword(dto: AuthIdentifierDto): Promise<{ message: string }> {
     const identifier = dto.identifier.toLowerCase();
 
     const user = identifier.includes('@')
@@ -466,7 +467,7 @@ export class AuthService {
 
   async resetPassword(
     user: RequestUser,
-    dto: SetPasswordDto,
+    dto: ResetPasswordDto,
   ): Promise<{ message: string }> {
     if (user.purpose !== 'PASSWORD_SETUP') {
       throw new AuthException(
