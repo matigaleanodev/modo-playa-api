@@ -51,7 +51,6 @@ export class R2ObjectStorageService implements ObjectStorageService {
   async createSignedPutUrl(input: {
     key: string;
     contentType: string;
-    contentLength?: number;
     expiresInSeconds?: number;
   }): Promise<{
     url: string;
@@ -66,7 +65,6 @@ export class R2ObjectStorageService implements ObjectStorageService {
       Bucket: this.bucket,
       Key: input.key,
       ContentType: input.contentType,
-      ...(input.contentLength ? { ContentLength: input.contentLength } : {}),
     });
 
     const url = await getSignedUrl(this.client, command, {
@@ -76,10 +74,6 @@ export class R2ObjectStorageService implements ObjectStorageService {
     const requiredHeaders: Record<string, string> = {
       'Content-Type': input.contentType,
     };
-
-    if (input.contentLength !== undefined) {
-      requiredHeaders['Content-Length'] = String(input.contentLength);
-    }
 
     return {
       url,

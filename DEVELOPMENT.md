@@ -76,6 +76,8 @@ Notas:
 - `POST /api/auth/me/profile-image/upload-url` y `POST /api/auth/me/profile-image/confirm` gestionan la imagen propia del usuario autenticado y solo aplican a `OWNER`.
 - `GET /api/admin/media/health` permite validar conexión con R2 (requiere JWT).
 - El flujo canonico de media es `signed upload + confirmacion backend`.
+- Los uploads firmados browser requieren CORS habilitado en el bucket de R2 para los origenes reales de `modo-playa-admin` y `modo-playa-app`.
+- El preflight minimo del bucket debe aceptar `OPTIONS, PUT`, permitir `Content-Type` y exponer `ETag`.
 - La validación global rechaza campos no definidos en DTOs (`whitelist + forbidNonWhitelisted`).
   Ejemplo: en `POST /api/admin/contacts` no enviar `id` en el body.
 - Los errores de contrato y dominio exponen `code` estables y explícitos. Para consumidores, usar `code` como discriminador principal y no solo `message`.

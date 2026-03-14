@@ -19,7 +19,6 @@ export interface ObjectStorageService {
   createSignedPutUrl(input: {
     key: string;
     contentType: string;
-    contentLength?: number;
     expiresInSeconds?: number;
   }): Promise<{
     url: string;

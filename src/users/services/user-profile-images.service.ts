@@ -87,7 +87,6 @@ export class UserProfileImagesService {
     const signed = await this.storage.createSignedPutUrl({
       key: stagingKey,
       contentType: dto.mime,
-      contentLength: dto.size,
     });
 
     return {

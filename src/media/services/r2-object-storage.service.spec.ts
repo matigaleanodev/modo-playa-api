@@ -42,14 +42,13 @@ describe('R2ObjectStorageService', () => {
     jest.restoreAllMocks();
   });
 
-  it('debe crear signed URL de PUT con headers requeridos', async () => {
+  it('debe crear signed URL de PUT sin Content-Length firmado', async () => {
     const { service } = createService();
     getSignedUrlMock.mockResolvedValue('https://signed-url');
 
     const result = await service.createSignedPutUrl({
       key: 'lodgings/x/staging',
       contentType: 'image/jpeg',
-      contentLength: 123,
     });
 
     expect(getSignedUrlMock).toHaveBeenCalled();
@@ -58,7 +57,6 @@ describe('R2ObjectStorageService', () => {
       method: 'PUT',
       requiredHeaders: {
         'Content-Type': 'image/jpeg',
-        'Content-Length': '123',
       },
       expiresInSeconds: 600,
     });

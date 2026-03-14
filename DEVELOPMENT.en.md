@@ -76,6 +76,8 @@ Notes:
 - `POST /api/auth/me/profile-image/upload-url` and `POST /api/auth/me/profile-image/confirm` manage the authenticated user's own profile image and are restricted to `OWNER`.
 - `GET /api/admin/media/health` validates R2 connectivity (JWT required).
 - The canonical media flow is `signed upload + backend confirmation`.
+- Browser signed uploads also require bucket-level R2 CORS for the real `modo-playa-admin` and `modo-playa-app` origins.
+- The minimum bucket preflight must allow `OPTIONS, PUT`, allow `Content-Type`, and expose `ETag`.
 - Global validation rejects undefined DTO fields (`whitelist + forbidNonWhitelisted`).
   Example: do not send `id` in `POST /api/admin/contacts` body.
 - Contract and domain errors expose stable explicit `code` values. Consumers should branch on `code`, not only on `message`.
