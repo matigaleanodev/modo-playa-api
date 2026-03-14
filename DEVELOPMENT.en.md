@@ -48,7 +48,6 @@ R2_BUCKET=modo-playa-media
 R2_ACCESS_KEY_ID=your_r2_access_key_id
 R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
 R2_REGION=auto
-R2_SIGNED_URL_EXPIRES_SECONDS=600
 MEDIA_PUBLIC_BASE_URL=https://media.example.com
 ```
 

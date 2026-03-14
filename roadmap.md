@@ -463,6 +463,7 @@ Impacto operativo cerrado:
 - el flujo canonico deja de depender de CORS de bucket, headers firmados o preflight browser
 - la centralizacion de validacion, normalizacion y subida a storage queda alineada con la regla operativa del producto
 - el bucket puede seguir requiriendo ajustes de CORS para usos manuales o legacy, pero ya no bloquea el camino principal del admin
+- se retiraron los endpoints legacy `upload-url` y `confirm` de media para que el contrato backend-only quede sin caminos paralelos
 
 Endpoints canonicos desde este corte:
 
