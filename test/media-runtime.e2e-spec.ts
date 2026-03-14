@@ -9,11 +9,10 @@ import { getModelToken } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { Readable, PassThrough } from 'stream';
+import { PassThrough, Readable } from 'stream';
 import { Types } from 'mongoose';
 import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
-import { ERROR_CODES } from '../src/common/constants/error-code';
 import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 import { LodgingDraftImageUploadsAdminController } from '../src/lodgings/controllers/lodging-draft-image-uploads-admin.controller';
 import { LodgingsAdminController } from '../src/lodgings/controllers/lodgings.controller';
@@ -82,6 +81,7 @@ const authenticatedUser: RequestUser = {
   role: 'OWNER',
   purpose: 'ACCESS',
 };
+const draftSessionId = '550e8400-e29b-41d4-a716-446655440000';
 
 class TestJwtAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -93,24 +93,6 @@ class TestJwtAuthGuard implements CanActivate {
 
 class InMemoryObjectStorageService {
   readonly objects = new Map<string, { body: Buffer; mime: string }>();
-
-  createSignedPutUrl(input: {
-    key: string;
-    contentType: string;
-    contentLength?: number;
-  }) {
-    return Promise.resolve({
-      url: `https://signed.test/${input.key}`,
-      method: 'PUT' as const,
-      requiredHeaders: {
-        'Content-Type': input.contentType,
-        ...(input.contentLength !== undefined
-          ? { 'Content-Length': String(input.contentLength) }
-          : {}),
-      },
-      expiresInSeconds: 600,
-    });
-  }
 
   headObject(key: string) {
     const object = this.objects.get(key);
@@ -159,10 +141,6 @@ class InMemoryObjectStorageService {
     this.objects.delete(key);
     return Promise.resolve();
   }
-
-  seedObject(key: string, body: Buffer, mime: string) {
-    this.objects.set(key, { body, mime });
-  }
 }
 
 class InMemoryImageProcessorService {
@@ -187,8 +165,7 @@ class InMemoryLodgingModel {
   _doc: LodgingRecord;
 
   constructor(data: Partial<LodgingRecord>) {
-    const record = InMemoryLodgingModel.buildRecord(data);
-    this._doc = record;
+    this._doc = InMemoryLodgingModel.buildRecord(data);
   }
 
   static reset() {
@@ -235,12 +212,8 @@ class InMemoryLodgingModel {
     return record;
   }
 
-  async save() {
-    return this._doc.save();
-  }
-
   static findOne(filters: Record<string, unknown>) {
-    const found =
+    return (
       InMemoryLodgingModel.records.find((record) => {
         if (filters._id && !record._id.equals(filters._id as Types.ObjectId)) {
           return false;
@@ -258,9 +231,8 @@ class InMemoryLodgingModel {
           return false;
         }
         return true;
-      }) ?? null;
-
-    return found;
+      }) ?? null
+    );
   }
 
   static deleteOne(filters: Record<string, unknown>) {
@@ -268,6 +240,10 @@ class InMemoryLodgingModel {
       (record) => !record._id.equals(filters._id as Types.ObjectId),
     );
     return Promise.resolve({ deletedCount: 1 });
+  }
+
+  async save() {
+    return this._doc.save();
   }
 }
 
@@ -311,21 +287,6 @@ class InMemoryPendingDraftModel {
     };
     InMemoryPendingDraftModel.records.push(record);
     return Promise.resolve(record);
-  }
-
-  static findOne(filters: {
-    ownerId: Types.ObjectId;
-    uploadSessionId: string;
-    imageId: string;
-  }) {
-    return Promise.resolve(
-      InMemoryPendingDraftModel.records.find(
-        (record) =>
-          record.ownerId.equals(filters.ownerId) &&
-          record.uploadSessionId === filters.uploadSessionId &&
-          record.imageId === filters.imageId,
-      ) ?? null,
-    );
   }
 
   static find(filters: {
@@ -446,7 +407,6 @@ class TestMediaRuntimeModule {}
 
 describe('Media runtime flow (e2e)', () => {
   let app: INestApplication<App>;
-  let storage: InMemoryObjectStorageService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -460,14 +420,11 @@ describe('Media runtime flow (e2e)', () => {
     app.setGlobalPrefix('api');
     app.useGlobalPipes(createAppValidationPipe());
     await app.init();
-
-    storage = moduleFixture.get(OBJECT_STORAGE_SERVICE);
   });
 
   beforeEach(() => {
     InMemoryLodgingModel.reset();
     InMemoryPendingDraftModel.reset();
-    storage.objects.clear();
   });
 
   afterAll(async () => {
@@ -476,35 +433,25 @@ describe('Media runtime flow (e2e)', () => {
     }
   });
 
-  it('ejecuta upload-url, confirm y create de lodging con services reales', async () => {
+  it('ejecuta upload draft y create de lodging con services reales', async () => {
     const uploadResponse = await request(app.getHttpServer())
-      .post('/api/admin/lodging-image-uploads/upload-url')
-      .send({
-        uploadSessionId: 'runtime-session-1',
-        mime: 'image/png',
-        size: 12,
+      .post('/api/admin/lodging-image-uploads')
+      .field('uploadSessionId', draftSessionId)
+      .attach('file', Buffer.from('fake-image'), {
+        filename: 'draft.png',
+        contentType: 'image/png',
       })
       .expect(201);
 
-    const { imageId, uploadKey } = uploadResponse.body as {
+    const uploadBody = uploadResponse.body as unknown as {
       imageId: string;
-      uploadKey: string;
+      uploadSessionId: string;
+      confirmed: boolean;
     };
 
-    storage.seedObject(uploadKey, Buffer.from('fake-image'), 'image/png');
-
-    await request(app.getHttpServer())
-      .post('/api/admin/lodging-image-uploads/confirm')
-      .send({
-        uploadSessionId: 'runtime-session-1',
-        imageId,
-      })
-      .expect(201)
-      .expect({
-        imageId,
-        uploadSessionId: 'runtime-session-1',
-        confirmed: true,
-      });
+    expect(typeof uploadBody.imageId).toBe('string');
+    expect(uploadBody.uploadSessionId).toBe(draftSessionId);
+    expect(uploadBody.confirmed).toBe(true);
 
     const createResponse = await request(app.getHttpServer())
       .post('/api/admin/lodgings')
@@ -520,8 +467,8 @@ describe('Media runtime flow (e2e)', () => {
         bedrooms: 2,
         bathrooms: 1,
         minNights: 2,
-        uploadSessionId: 'runtime-session-1',
-        pendingImageIds: [imageId],
+        uploadSessionId: draftSessionId,
+        pendingImageIds: [uploadBody.imageId],
       })
       .expect(201);
 
@@ -534,44 +481,9 @@ describe('Media runtime flow (e2e)', () => {
 
     expect(responseBody.title).toBe('Runtime Cabin');
     expect(responseBody.mediaImages).toHaveLength(1);
-    expect(responseBody.mediaImages[0].imageId).toBe(imageId);
+    expect(responseBody.mediaImages[0].imageId).toBe(uploadBody.imageId);
     expect(responseBody.mediaImages[0].isDefault).toBe(true);
     expect(responseBody.mainImage).toContain('/lodgings/');
     expect(responseBody.images).toHaveLength(1);
-  });
-
-  it('rechaza confirm de draft expirado y limpia pending + staging', async () => {
-    const uploadResponse = await request(app.getHttpServer())
-      .post('/api/admin/lodging-image-uploads/upload-url')
-      .send({
-        uploadSessionId: 'runtime-session-expired',
-        mime: 'image/png',
-        size: 12,
-      })
-      .expect(201);
-
-    const { imageId, uploadKey } = uploadResponse.body as {
-      imageId: string;
-      uploadKey: string;
-    };
-
-    const pending = InMemoryPendingDraftModel.records[0];
-    pending.expiresAt = new Date(Date.now() - 60_000);
-    storage.seedObject(uploadKey, Buffer.from('fake-image'), 'image/png');
-
-    await request(app.getHttpServer())
-      .post('/api/admin/lodging-image-uploads/confirm')
-      .send({
-        uploadSessionId: 'runtime-session-expired',
-        imageId,
-      })
-      .expect(400)
-      .expect({
-        message: 'Pending lodging draft image upload expired',
-        code: ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
-      });
-
-    expect(InMemoryPendingDraftModel.records).toHaveLength(0);
-    expect(storage.objects.has(uploadKey)).toBe(false);
   });
 });

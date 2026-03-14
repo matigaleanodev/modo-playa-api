@@ -4,10 +4,6 @@ import {
   UserProfileImage,
   UserProfileImageSchema,
 } from './user-profile-image.schema';
-import {
-  PendingUserProfileImageUpload,
-  PendingUserProfileImageUploadSchema,
-} from './pending-user-profile-image-upload.schema';
 
 export type UserDocument = User & Document;
 
@@ -64,12 +60,6 @@ export class User {
     required: false,
   })
   profileImage?: UserProfileImage;
-
-  @Prop({
-    type: [PendingUserProfileImageUploadSchema],
-    default: [],
-  })
-  pendingProfileImageUploads!: PendingUserProfileImageUpload[];
 
   @Prop()
   phone?: string;

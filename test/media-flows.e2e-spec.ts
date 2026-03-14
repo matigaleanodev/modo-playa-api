@@ -21,8 +21,7 @@ import { MEDIA_URL_BUILDER } from '../src/media/constants/media.tokens';
 import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 
 const mockLodgingImagesService = {
-  createDraftUploadUrl: jest.fn(),
-  confirmDraftUpload: jest.fn(),
+  uploadDraftImageFile: jest.fn(),
 };
 
 const mockLodgingsService = {
@@ -30,8 +29,7 @@ const mockLodgingsService = {
 };
 
 const mockUserProfileImagesService = {
-  createUploadUrl: jest.fn(),
-  confirmUpload: jest.fn(),
+  uploadOwnProfileImageFile: jest.fn(),
   deleteProfileImage: jest.fn(),
 };
 
@@ -52,6 +50,7 @@ const authenticatedUser: RequestUser = {
   role: 'SUPERADMIN',
   purpose: 'ACCESS',
 };
+const draftSessionId = '550e8400-e29b-41d4-a716-446655440000';
 
 class TestJwtAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -114,110 +113,54 @@ describe('Media flows (e2e)', () => {
     await app.close();
   });
 
-  it('POST /api/admin/lodging-image-uploads/upload-url crea upload pendiente de borrador', async () => {
-    mockLodgingImagesService.createDraftUploadUrl.mockResolvedValue({
+  it('POST /api/admin/lodging-image-uploads sube la imagen draft por backend', async () => {
+    mockLodgingImagesService.uploadDraftImageFile.mockResolvedValue({
       imageId: 'image-1',
-      uploadKey: 'lodgings/drafts/owner/session/image-1/staging-upload',
-      uploadUrl: 'https://signed.test/upload',
-      method: 'PUT',
-      requiredHeaders: { 'Content-Type': 'image/png' },
-      expiresInSeconds: 600,
-    });
-
-    await request(app.getHttpServer())
-      .post('/api/admin/lodging-image-uploads/upload-url')
-      .send({
-        uploadSessionId: 'draft-session-1',
-        mime: 'image/png',
-        size: 1234,
-      })
-      .expect(201)
-      .expect({
-        imageId: 'image-1',
-        uploadKey: 'lodgings/drafts/owner/session/image-1/staging-upload',
-        uploadUrl: 'https://signed.test/upload',
-        method: 'PUT',
-        requiredHeaders: { 'Content-Type': 'image/png' },
-        expiresInSeconds: 600,
-      });
-
-    expect(mockLodgingImagesService.createDraftUploadUrl).toHaveBeenCalledWith(
-      {
-        uploadSessionId: 'draft-session-1',
-        mime: 'image/png',
-        size: 1234,
-      },
-      authenticatedUser.ownerId,
-    );
-  });
-
-  it('POST /api/admin/lodging-image-uploads/upload-url valida DTOs requeridos', async () => {
-    await request(app.getHttpServer())
-      .post('/api/admin/lodging-image-uploads/upload-url')
-      .send({
-        mime: 'image/png',
-        size: 1234,
-      })
-      .expect(400)
-      .expect({
-        message: 'uploadSessionId must be a string',
-        code: ERROR_CODES.INVALID_UPLOAD_SESSION_ID,
-      });
-
-    expect(
-      mockLodgingImagesService.createDraftUploadUrl,
-    ).not.toHaveBeenCalled();
-  });
-
-  it('POST /api/admin/lodging-image-uploads/confirm confirma el upload pendiente del borrador', async () => {
-    mockLodgingImagesService.confirmDraftUpload.mockResolvedValue({
-      imageId: 'image-1',
-      uploadSessionId: 'draft-session-1',
+      uploadSessionId: draftSessionId,
       confirmed: true,
     });
 
     await request(app.getHttpServer())
-      .post('/api/admin/lodging-image-uploads/confirm')
-      .send({
-        uploadSessionId: 'draft-session-1',
-        imageId: 'image-1',
+      .post('/api/admin/lodging-image-uploads')
+      .field('uploadSessionId', draftSessionId)
+      .attach('file', Buffer.from('fake-image'), {
+        filename: 'draft.png',
+        contentType: 'image/png',
       })
       .expect(201)
       .expect({
         imageId: 'image-1',
-        uploadSessionId: 'draft-session-1',
+        uploadSessionId: draftSessionId,
         confirmed: true,
       });
 
-    expect(mockLodgingImagesService.confirmDraftUpload).toHaveBeenCalledWith(
+    expect(mockLodgingImagesService.uploadDraftImageFile).toHaveBeenCalledWith(
       {
-        uploadSessionId: 'draft-session-1',
-        imageId: 'image-1',
+        uploadSessionId: draftSessionId,
       },
+      expect.objectContaining({
+        mimetype: 'image/png',
+      }),
       authenticatedUser.ownerId,
     );
   });
 
-  it('POST /api/admin/lodging-image-uploads/confirm devuelve error de dominio cuando el pending expira', async () => {
-    mockLodgingImagesService.confirmDraftUpload.mockRejectedValue(
-      new DomainException(
-        'Pending lodging draft image upload expired',
-        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
-        400,
-      ),
-    );
-
+  it('POST /api/admin/lodging-image-uploads valida DTOs requeridos', async () => {
     await request(app.getHttpServer())
-      .post('/api/admin/lodging-image-uploads/confirm')
-      .send({
-        uploadSessionId: 'draft-session-1',
-        imageId: 'image-1',
+      .post('/api/admin/lodging-image-uploads')
+      .attach('file', Buffer.from('fake-image'), {
+        filename: 'draft.png',
+        contentType: 'image/png',
       })
       .expect(400)
       .expect({
-        message: 'Pending lodging draft image upload expired',
-        code: ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        message: 'uploadSessionId must be a UUID',
+        code: ERROR_CODES.REQUEST_VALIDATION_ERROR,
       });
+
+    expect(
+      mockLodgingImagesService.uploadDraftImageFile,
+    ).not.toHaveBeenCalled();
   });
 
   it('POST /api/admin/lodgings permite alta con pendingImageIds, uploadSessionId y targetOwnerId', async () => {
@@ -254,7 +197,7 @@ describe('Media flows (e2e)', () => {
         bedrooms: 2,
         bathrooms: 1,
         minNights: 2,
-        uploadSessionId: 'draft-session-1',
+        uploadSessionId: draftSessionId,
         pendingImageIds: ['image-1'],
         targetOwnerId: '507f1f77bcf86cd799439099',
       })
@@ -262,7 +205,7 @@ describe('Media flows (e2e)', () => {
 
     expect(mockLodgingsService.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        uploadSessionId: 'draft-session-1',
+        uploadSessionId: draftSessionId,
         pendingImageIds: ['image-1'],
         targetOwnerId: '507f1f77bcf86cd799439099',
       }),
@@ -297,142 +240,58 @@ describe('Media flows (e2e)', () => {
     expect(mockLodgingsService.create).not.toHaveBeenCalled();
   });
 
-  it('POST /api/admin/lodgings devuelve error de dominio si pendingImageIds llega sin uploadSessionId', async () => {
-    mockLodgingsService.create.mockRejectedValue(
-      new DomainException(
-        'uploadSessionId is required when pendingImageIds are provided',
-        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
-        400,
-      ),
-    );
-
-    await request(app.getHttpServer())
-      .post('/api/admin/lodgings')
-      .send({
-        title: 'Cabana',
-        description: 'Desc',
-        location: 'Loc',
-        city: 'Mar Azul',
-        type: 'house',
-        price: 100,
-        priceUnit: 'night',
-        maxGuests: 4,
-        bedrooms: 2,
-        bathrooms: 1,
-        minNights: 2,
-        pendingImageIds: ['image-1'],
-      })
-      .expect(400)
-      .expect({
-        message:
-          'uploadSessionId is required when pendingImageIds are provided',
-        code: ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
-      });
-  });
-
-  it('POST /api/auth/me/profile-image/upload-url usa el usuario autenticado', async () => {
+  it('POST /api/auth/me/profile-image usa el usuario autenticado', async () => {
     authenticatedUser.role = 'OWNER';
-    mockUserProfileImagesService.createUploadUrl.mockResolvedValue({
-      imageId: 'profile-1',
-      uploadKey: 'users/u/profile/profile-1/staging-upload',
-      uploadUrl: 'https://signed.test/profile',
-      method: 'PUT',
-      requiredHeaders: { 'Content-Type': 'image/webp' },
-      expiresInSeconds: 600,
-    });
-
-    await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/upload-url')
-      .send({
-        mime: 'image/webp',
-        size: 2048,
-      })
-      .expect(201);
-
-    expect(mockUserProfileImagesService.createUploadUrl).toHaveBeenCalledWith(
-      authenticatedUser.ownerId,
-      authenticatedUser.userId,
-      {
-        mime: 'image/webp',
-        size: 2048,
-      },
-    );
-  });
-
-  it('POST /api/auth/me/profile-image/upload-url valida payload requerido', async () => {
-    authenticatedUser.role = 'OWNER';
-    await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/upload-url')
-      .send({
-        size: 2048,
-      })
-      .expect(400)
-      .expect({
-        message: 'mime must be a string',
-        code: ERROR_CODES.INVALID_IMAGE_MIME,
-      });
-
-    expect(mockUserProfileImagesService.createUploadUrl).not.toHaveBeenCalled();
-  });
-
-  it('POST /api/auth/me/profile-image/confirm confirma la imagen propia', async () => {
-    authenticatedUser.role = 'OWNER';
-    mockUserProfileImagesService.confirmUpload.mockResolvedValue({
+    mockUserProfileImagesService.uploadOwnProfileImageFile.mockResolvedValue({
       image: {
         imageId: 'profile-1',
-        key: 'users/u/profile/profile-1/original.webp',
-        width: 400,
-        height: 400,
-        bytes: 12345,
-        mime: 'image/webp',
-        createdAt: '2026-03-12T12:00:00.000Z',
-        url: 'https://media.test/users/u/profile/profile-1/original.webp',
       },
     });
 
     await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/confirm')
-      .send({
-        imageId: 'profile-1',
-        key: 'users/u/profile/profile-1/staging-upload',
-        width: 400,
-        height: 400,
+      .post('/api/auth/me/profile-image')
+      .attach('file', Buffer.from('profile-image'), {
+        filename: 'profile.webp',
+        contentType: 'image/webp',
       })
       .expect(201);
 
-    expect(mockUserProfileImagesService.confirmUpload).toHaveBeenCalledWith(
+    expect(
+      mockUserProfileImagesService.uploadOwnProfileImageFile,
+    ).toHaveBeenCalledWith(
       authenticatedUser.ownerId,
       authenticatedUser.userId,
-      {
-        imageId: 'profile-1',
-        key: 'users/u/profile/profile-1/staging-upload',
-        width: 400,
-        height: 400,
-      },
+      expect.objectContaining({
+        mimetype: 'image/webp',
+      }),
     );
   });
 
-  it('POST /api/auth/me/profile-image/confirm devuelve error de dominio si el pending expira', async () => {
+  it('POST /api/auth/me/profile-image exige archivo', async () => {
     authenticatedUser.role = 'OWNER';
-    mockUserProfileImagesService.confirmUpload.mockRejectedValue(
+    mockUserProfileImagesService.uploadOwnProfileImageFile.mockRejectedValue(
       new DomainException(
-        'Pending profile image upload expired',
-        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        'Image file is required',
+        ERROR_CODES.REQUEST_VALIDATION_ERROR,
         400,
       ),
     );
 
     await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/confirm')
-      .send({
-        imageId: 'profile-1',
-        key: 'users/u/profile/profile-1/staging-upload',
-      })
+      .post('/api/auth/me/profile-image')
       .expect(400)
       .expect({
-        message: 'Pending profile image upload expired',
-        code: ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        message: 'Image file is required',
+        code: ERROR_CODES.REQUEST_VALIDATION_ERROR,
       });
+
+    expect(
+      mockUserProfileImagesService.uploadOwnProfileImageFile,
+    ).toHaveBeenCalledWith(
+      authenticatedUser.ownerId,
+      authenticatedUser.userId,
+      undefined,
+    );
   });
 
   it('DELETE /api/auth/me/profile-image elimina la imagen propia', async () => {
@@ -451,14 +310,14 @@ describe('Media flows (e2e)', () => {
     ).toHaveBeenCalledWith(authenticatedUser.ownerId, authenticatedUser.userId);
   });
 
-  it('POST /api/auth/me/profile-image/upload-url rechaza a SUPERADMIN aunque sea su propio usuario', async () => {
+  it('POST /api/auth/me/profile-image rechaza a SUPERADMIN aunque sea su propio usuario', async () => {
     authenticatedUser.role = 'SUPERADMIN';
 
     await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/upload-url')
-      .send({
-        mime: 'image/webp',
-        size: 2048,
+      .post('/api/auth/me/profile-image')
+      .attach('file', Buffer.from('profile-image'), {
+        filename: 'profile.webp',
+        contentType: 'image/webp',
       })
       .expect(403)
       .expect({
@@ -466,6 +325,8 @@ describe('Media flows (e2e)', () => {
         code: ERROR_CODES.PROFILE_IMAGE_FORBIDDEN_FOR_SUPERADMIN,
       });
 
-    expect(mockUserProfileImagesService.createUploadUrl).not.toHaveBeenCalled();
+    expect(
+      mockUserProfileImagesService.uploadOwnProfileImageFile,
+    ).not.toHaveBeenCalled();
   });
 });

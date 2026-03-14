@@ -8,7 +8,6 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
 import { Buffer } from 'buffer';
 import type {
@@ -20,7 +19,6 @@ import type {
 @Injectable()
 export class R2ObjectStorageService implements ObjectStorageService {
   private readonly bucket: string;
-  private readonly defaultSignedUrlExpiresSeconds: number;
   private readonly client: S3Client;
 
   constructor(private readonly configService: ConfigService) {
@@ -29,13 +27,6 @@ export class R2ObjectStorageService implements ObjectStorageService {
     const secretAccessKey = this.getRequiredEnv('R2_SECRET_ACCESS_KEY');
 
     this.bucket = this.getRequiredEnv('R2_BUCKET');
-    this.defaultSignedUrlExpiresSeconds = Number(
-      this.configService.get<string>('R2_SIGNED_URL_EXPIRES_SECONDS') ?? '600',
-    );
-
-    if (!Number.isFinite(this.defaultSignedUrlExpiresSeconds)) {
-      throw new Error('R2_SIGNED_URL_EXPIRES_SECONDS inválido');
-    }
 
     this.client = new S3Client({
       region: this.configService.get<string>('R2_REGION') ?? 'auto',
@@ -46,47 +37,6 @@ export class R2ObjectStorageService implements ObjectStorageService {
         secretAccessKey,
       },
     });
-  }
-
-  async createSignedPutUrl(input: {
-    key: string;
-    contentType: string;
-    contentLength?: number;
-    expiresInSeconds?: number;
-  }): Promise<{
-    url: string;
-    method: 'PUT';
-    requiredHeaders: Record<string, string>;
-    expiresInSeconds: number;
-  }> {
-    const expiresInSeconds =
-      input.expiresInSeconds ?? this.defaultSignedUrlExpiresSeconds;
-
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: input.key,
-      ContentType: input.contentType,
-      ...(input.contentLength ? { ContentLength: input.contentLength } : {}),
-    });
-
-    const url = await getSignedUrl(this.client, command, {
-      expiresIn: expiresInSeconds,
-    });
-
-    const requiredHeaders: Record<string, string> = {
-      'Content-Type': input.contentType,
-    };
-
-    if (input.contentLength !== undefined) {
-      requiredHeaders['Content-Length'] = String(input.contentLength);
-    }
-
-    return {
-      url,
-      method: 'PUT',
-      requiredHeaders,
-      expiresInSeconds,
-    };
   }
 
   async headObject(key: string): Promise<ObjectStorageHeadResult> {

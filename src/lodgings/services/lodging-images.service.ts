@@ -3,16 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, QueryFilter, Types } from 'mongoose';
 import { randomUUID } from 'crypto';
-import { PassThrough } from 'stream';
+import { PassThrough, Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { UserRole } from '@common/interfaces/role.interface';
 import { toObjectIdOrThrow } from '@common/utils/object-id.util';
 import { ERROR_CODES } from '@common/constants/error-code';
 import { DomainException } from '@common/exceptions/domain.exception';
 import { Lodging, LodgingDocument } from '@lodgings/schemas/lodging.schema';
-import { RequestLodgingImageUploadUrlDto } from '@lodgings/dto/request-lodging-image-upload-url.dto';
-import { LodgingImageUploadUrlResponseDto } from '@lodgings/dto/lodging-image-upload-url-response.dto';
-import { ConfirmLodgingImageDto } from '@lodgings/dto/confirm-lodging-image.dto';
 import { ConfirmLodgingImageResponseDto } from '@lodgings/dto/confirm-lodging-image-response.dto';
 import { SetDefaultLodgingImageResponseDto } from '@lodgings/dto/set-default-lodging-image-response.dto';
 import { DeleteLodgingImageResponseDto } from '@lodgings/dto/delete-lodging-image-response.dto';
@@ -25,15 +22,14 @@ import {
 import type { ImageProcessorService } from '@media/interfaces/image-processor.interface';
 import type { ObjectStorageService } from '@media/interfaces/object-storage.service.interface';
 import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
+import type { UploadedImageFile } from '@media/interfaces/uploaded-image-file.interface';
 import { LodgingImage } from '@lodgings/schemas/lodging-image.schema';
 import { PendingLodgingImageUpload } from '@lodgings/schemas/pending-lodging-image-upload.schema';
 import { LodgingImageResponseDto } from '@lodgings/dto/lodging-image-response.dto';
-import { RequestDraftLodgingImageUploadUrlDto } from '@lodgings/dto/request-draft-lodging-image-upload-url.dto';
 import {
   PendingLodgingDraftImageUpload,
   PendingLodgingDraftImageUploadDocument,
 } from '@lodgings/schemas/pending-lodging-draft-image-upload.schema';
-import { ConfirmDraftLodgingImageDto } from '@lodgings/dto/confirm-draft-lodging-image.dto';
 import { ConfirmDraftLodgingImageResponseDto } from '@lodgings/dto/confirm-draft-lodging-image-response.dto';
 
 @Injectable()
@@ -53,12 +49,12 @@ export class LodgingImagesService {
     private readonly policy: LodgingImagesPolicyService,
   ) {}
 
-  async createDraftUploadUrl(
-    dto: RequestDraftLodgingImageUploadUrlDto,
+  async uploadDraftImageFile(
+    dto: { uploadSessionId: string },
+    file: UploadedImageFile,
     ownerId: string,
-  ): Promise<LodgingImageUploadUrlResponseDto> {
-    this.assertAllowedMime(dto.mime);
-    this.assertSizeWithinLimit(dto.size, this.getLodgingMaxBytes());
+  ): Promise<ConfirmDraftLodgingImageResponseDto> {
+    this.assertImageFile(file, this.getLodgingMaxBytes());
 
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
@@ -82,7 +78,7 @@ export class LodgingImagesService {
       imageId,
     );
 
-    await this.pendingDraftUploadModel.create({
+    const pending = await this.pendingDraftUploadModel.create({
       ownerId: ownerObjectId,
       uploadSessionId: dto.uploadSessionId,
       imageId,
@@ -91,73 +87,16 @@ export class LodgingImagesService {
       status: 'PENDING',
     });
 
-    const signed = await this.storage.createSignedPutUrl({
-      key: stagingKey,
-      contentType: dto.mime,
-      contentLength: dto.size,
-    });
-
-    return {
-      imageId,
-      uploadKey: stagingKey,
-      uploadUrl: signed.url,
-      method: signed.method,
-      requiredHeaders: signed.requiredHeaders,
-      expiresInSeconds: signed.expiresInSeconds,
-    };
-  }
-
-  async confirmDraftUpload(
-    dto: ConfirmDraftLodgingImageDto,
-    ownerId: string,
-  ): Promise<ConfirmDraftLodgingImageResponseDto> {
-    const pending = await this.findPendingDraftUploadOrThrow(
-      ownerId,
-      dto.uploadSessionId,
-      dto.imageId,
-    );
-
-    if (pending.status === 'CONFIRMED') {
-      return {
-        imageId: pending.imageId,
-        uploadSessionId: pending.uploadSessionId,
-        confirmed: true,
-        idempotent: true,
-      };
+    try {
+      await this.storage.putObject({
+        key: stagingKey,
+        body: Readable.from(file.buffer),
+        contentType: file.mimetype,
+      });
+    } catch (error) {
+      await this.pendingDraftUploadModel.deleteOne({ _id: pending._id });
+      throw error;
     }
-
-    if (new Date(pending.expiresAt).getTime() < Date.now()) {
-      await this.deleteDraftUploads([pending]);
-      throw new DomainException(
-        'Pending lodging draft image upload expired',
-        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    this.policy.assertPendingUploadValid(
-      {
-        imageId: pending.imageId,
-        stagingKey: pending.stagingKey,
-        createdAt: pending.createdAt,
-        expiresAt: pending.expiresAt,
-        status: 'PENDING',
-      },
-      pending.stagingKey,
-      new Date(),
-    );
-
-    const stagingHead = await this.storage.headObject(pending.stagingKey);
-    if (!stagingHead.exists) {
-      throw new DomainException(
-        'Pending draft lodging image upload not found in storage',
-        ERROR_CODES.STORAGE_OBJECT_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    this.assertAllowedMime(stagingHead.mime ?? undefined);
-    this.assertSizeWithinLimit(stagingHead.bytes, this.getLodgingMaxBytes());
 
     pending.status = 'CONFIRMED';
     await pending.save();
@@ -169,14 +108,13 @@ export class LodgingImagesService {
     };
   }
 
-  async createUploadUrl(
+  async uploadImageFile(
     lodgingId: string,
-    dto: RequestLodgingImageUploadUrlDto,
+    file: UploadedImageFile,
     ownerId: string,
     role: UserRole,
-  ): Promise<LodgingImageUploadUrlResponseDto> {
-    this.assertAllowedMime(dto.mime);
-    this.assertSizeWithinLimit(dto.size, this.getLodgingMaxBytes());
+  ): Promise<ConfirmLodgingImageResponseDto> {
+    this.assertImageFile(file, this.getLodgingMaxBytes());
 
     const lodging = await this.findOwnedLodgingOrThrow(
       lodgingId,
@@ -186,43 +124,69 @@ export class LodgingImagesService {
     await this.cleanupExpiredLodgingPendingUploads(lodging);
 
     const imageId = randomUUID();
-    const stagingKey = this.buildStagingKey(lodgingId, imageId);
-    const now = new Date();
-    const ttlSeconds = this.getPendingUploadTtlSeconds();
-    const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
+    const finalKey = this.buildFinalKey(lodgingId, imageId);
+    const handle = this.imageProcessor.createLodgingNormalizerTransform({
+      maxWidth: this.getLodgingMaxWidth(),
+      maxHeight: this.getLodgingMaxHeight(),
+      outputFormat: 'webp',
+    });
+    const output = new PassThrough();
 
-    const reserveFilter = {
-      ...this.buildOwnershipFilters(lodgingId, ownerId, role),
-      $expr: {
-        $lt: [
-          {
-            $add: [
-              { $size: { $ifNull: ['$mediaImages', []] } },
-              { $size: { $ifNull: ['$pendingImageUploads', []] } },
-            ],
-          },
-          this.policy.MAX_IMAGES,
-        ],
-      },
-    } as unknown as QueryFilter<LodgingDocument>;
+    try {
+      const uploadPromise = this.storage.putObject({
+        key: finalKey,
+        body: output,
+        contentType: 'image/webp',
+        cacheControl: 'public, max-age=31536000, immutable',
+      });
+
+      await Promise.all([
+        uploadPromise,
+        pipeline(
+          Readable.from(file.buffer),
+          handle.transform as NodeJS.WritableStream,
+          output,
+        ),
+      ]);
+    } catch (error) {
+      try {
+        await this.storage.deleteObject(finalKey);
+      } catch {
+        // best effort cleanup
+      }
+      throw error;
+    }
+
+    const metadata = await handle.getMetadata();
+    const imageToPersist: LodgingImage = {
+      imageId,
+      key: finalKey,
+      isDefault: false,
+      width: metadata.width,
+      height: metadata.height,
+      bytes: metadata.bytes,
+      mime: metadata.mime,
+      createdAt: new Date(),
+    };
 
     const updated = await this.lodgingModel.findOneAndUpdate(
-      reserveFilter,
       {
-        $push: {
-          pendingImageUploads: {
-            imageId,
-            stagingKey,
-            createdAt: now,
-            expiresAt,
-            status: 'PENDING',
-          },
-        },
+        ...this.buildOwnershipFilters(lodgingId, ownerId, role),
+        'mediaImages.4': { $exists: false },
+      } as QueryFilter<LodgingDocument>,
+      {
+        $push: { mediaImages: imageToPersist },
       },
       { returnDocument: 'after' },
     );
 
     if (!updated) {
+      try {
+        await this.storage.deleteObject(finalKey);
+      } catch {
+        // best effort cleanup
+      }
+
       const current = await this.findOwnedLodgingOrThrow(
         lodgingId,
         ownerId,
@@ -240,202 +204,20 @@ export class LodgingImagesService {
       );
     }
 
-    const signed = await this.storage.createSignedPutUrl({
-      key: stagingKey,
-      contentType: dto.mime,
-      contentLength: dto.size,
-    });
-
-    return {
-      imageId,
-      uploadKey: stagingKey,
-      uploadUrl: signed.url,
-      method: signed.method,
-      requiredHeaders: signed.requiredHeaders,
-      expiresInSeconds: signed.expiresInSeconds,
-    };
-  }
-
-  async confirmUpload(
-    lodgingId: string,
-    dto: ConfirmLodgingImageDto,
-    ownerId: string,
-    role: UserRole,
-  ): Promise<ConfirmLodgingImageResponseDto> {
-    const lodging = await this.findOwnedLodgingOrThrow(
-      lodgingId,
-      ownerId,
-      role,
-    );
-    const existing = this.getLodgingImages(lodging).find(
-      (image) => image.imageId === dto.imageId,
-    );
-
-    if (existing) {
-      return {
-        image: this.toLodgingImageResponse(existing),
-        idempotent: true,
-      };
-    }
-
-    const expectedStagingKey = this.buildStagingKey(lodgingId, dto.imageId);
-    if (dto.key !== expectedStagingKey) {
-      throw new DomainException(
-        'Invalid lodging image upload key',
-        ERROR_CODES.LODGING_IMAGE_UPLOAD_INVALID_KEY,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const removedExpiredIds =
-      await this.cleanupExpiredLodgingPendingUploads(lodging);
-    if (removedExpiredIds.has(dto.imageId)) {
-      throw new DomainException(
-        'Pending lodging image upload expired',
-        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const pending = this.getPendingUploads(lodging).find(
-      (item) => item.imageId === dto.imageId,
-    );
-    this.policy.assertPendingUploadValid(
-      pending,
-      expectedStagingKey,
-      new Date(),
-    );
-
-    const stagingHead = await this.storage.headObject(expectedStagingKey);
-    if (!stagingHead.exists) {
-      throw new DomainException(
-        'Pending upload object not found in storage',
-        ERROR_CODES.STORAGE_OBJECT_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    this.assertAllowedMime(stagingHead.mime ?? undefined);
-    this.assertSizeWithinLimit(stagingHead.bytes, this.getLodgingMaxBytes());
-
-    const finalKey = this.buildFinalKey(lodgingId, dto.imageId);
-    const finalHead = await this.storage.headObject(finalKey);
-
-    let processed = {
-      width: dto.width,
-      height: dto.height,
-      bytes: finalHead.bytes ?? stagingHead.bytes,
-      mime: finalHead.mime ?? 'image/webp',
-    };
-
-    if (!finalHead.exists) {
-      const source = await this.storage.getObjectStream(expectedStagingKey);
-      const handle = this.imageProcessor.createLodgingNormalizerTransform({
-        maxWidth: this.getLodgingMaxWidth(),
-        maxHeight: this.getLodgingMaxHeight(),
-        outputFormat: 'webp',
-      });
-      const output = new PassThrough();
-
-      const uploadPromise = this.storage.putObject({
-        key: finalKey,
-        body: output,
-        contentType: 'image/webp',
-        cacheControl: 'public, max-age=31536000, immutable',
-      });
-
-      await Promise.all([
-        uploadPromise,
-        pipeline(
-          source.stream as NodeJS.ReadableStream,
-          handle.transform as NodeJS.WritableStream,
-          output,
-        ),
-      ]);
-
-      const metadata = await handle.getMetadata();
-      processed = {
-        width: metadata.width,
-        height: metadata.height,
-        bytes: metadata.bytes,
-        mime: metadata.mime,
-      };
-    }
-
-    const beforeImagesCount = this.getLodgingImages(lodging).length;
-    const imageToPersist: LodgingImage = {
-      imageId: dto.imageId,
-      key: finalKey,
-      isDefault: beforeImagesCount === 0,
-      width: processed.width,
-      height: processed.height,
-      bytes: processed.bytes,
-      mime: processed.mime,
-      createdAt: new Date(),
-    };
-
-    const confirmFilter = {
-      ...this.buildOwnershipFilters(lodgingId, ownerId, role),
-      'pendingImageUploads.imageId': dto.imageId,
-      'mediaImages.imageId': { $ne: dto.imageId },
-      'mediaImages.4': { $exists: false },
-    } as unknown as QueryFilter<LodgingDocument>;
-
-    const updated = await this.lodgingModel.findOneAndUpdate(
-      confirmFilter,
-      {
-        $push: { mediaImages: imageToPersist },
-        $pull: { pendingImageUploads: { imageId: dto.imageId } },
-      },
-      { returnDocument: 'after' },
-    );
-
-    if (!updated) {
-      const latest = await this.findOwnedLodgingOrThrow(
-        lodgingId,
-        ownerId,
-        role,
-      );
-      const concurrentExisting = this.getLodgingImages(latest).find(
-        (image) => image.imageId === dto.imageId,
-      );
-      if (concurrentExisting) {
-        return {
-          image: this.toLodgingImageResponse(concurrentExisting),
-          idempotent: true,
-        };
-      }
-
-      throw new DomainException(
-        'No se pudo confirmar la imagen por un conflicto de estado',
-        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    if (updated.mediaImages.length > 0) {
-      updated.mainImage =
-        updated.mediaImages.find((image) => image.isDefault)?.key ??
-        updated.mediaImages[0].key;
-      updated.images = updated.mediaImages.map((image) => image.key);
-      await updated.save();
-    }
-
+    updated.mainImage =
+      updated.mediaImages.find((image) => image.isDefault)?.key ??
+      updated.mediaImages[0]?.key ??
+      '';
+    updated.images = updated.mediaImages.map((image) => image.key);
     await this.ensureLodgingDefaultInvariant(updated);
 
-    try {
-      await this.storage.deleteObject(expectedStagingKey);
-    } catch {
-      // best effort cleanup
-    }
-
     const persisted = this.getLodgingImages(updated).find(
-      (image) => image.imageId === dto.imageId,
+      (image) => image.imageId === imageId,
     );
 
     if (!persisted) {
       throw new DomainException(
-        'Lodging image not found after confirmation',
+        'Lodging image not found after upload',
         ERROR_CODES.LODGING_IMAGE_NOT_FOUND,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
@@ -962,6 +744,22 @@ export class LodgingImagesService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private assertImageFile(
+    file: UploadedImageFile | undefined,
+    maxBytes: number,
+  ): asserts file is UploadedImageFile {
+    if (!file) {
+      throw new DomainException(
+        'Image file is required',
+        ERROR_CODES.REQUEST_VALIDATION_ERROR,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    this.assertAllowedMime(file.mimetype);
+    this.assertSizeWithinLimit(file.size, maxBytes);
   }
 
   private assertSizeWithinLimit(
