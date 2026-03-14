@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Delete,
   Param,
@@ -15,15 +14,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
 import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
-import { RequestLodgingImageUploadUrlDto } from '@lodgings/dto/request-lodging-image-upload-url.dto';
-import { LodgingImageUploadUrlResponseDto } from '@lodgings/dto/lodging-image-upload-url-response.dto';
-import { ConfirmLodgingImageDto } from '@lodgings/dto/confirm-lodging-image.dto';
 import { ConfirmLodgingImageResponseDto } from '@lodgings/dto/confirm-lodging-image-response.dto';
 import { SetDefaultLodgingImageResponseDto } from '@lodgings/dto/set-default-lodging-image-response.dto';
 import { DeleteLodgingImageResponseDto } from '@lodgings/dto/delete-lodging-image-response.dto';
 import {
-  ApiConfirmLodgingImageUploadDoc,
-  ApiCreateLodgingImageUploadUrlDoc,
   ApiDeleteLodgingImageDoc,
   ApiLodgingImagesAdminController,
   ApiSetDefaultLodgingImageDoc,
@@ -36,36 +30,6 @@ import type { UploadedImageFile } from '@media/interfaces/uploaded-image-file.in
 @UseGuards(JwtAuthGuard)
 export class LodgingImagesAdminController {
   constructor(private readonly lodgingImagesService: LodgingImagesService) {}
-
-  @ApiCreateLodgingImageUploadUrlDoc()
-  @Post('upload-url')
-  createUploadUrl(
-    @Param('lodgingId') lodgingId: string,
-    @Body() dto: RequestLodgingImageUploadUrlDto,
-    @Req() req: Request & { user: RequestUser },
-  ): Promise<LodgingImageUploadUrlResponseDto> {
-    return this.lodgingImagesService.createUploadUrl(
-      lodgingId,
-      dto,
-      req.user.ownerId,
-      req.user.role,
-    );
-  }
-
-  @ApiConfirmLodgingImageUploadDoc()
-  @Post('confirm')
-  confirmUpload(
-    @Param('lodgingId') lodgingId: string,
-    @Body() dto: ConfirmLodgingImageDto,
-    @Req() req: Request & { user: RequestUser },
-  ): Promise<ConfirmLodgingImageResponseDto> {
-    return this.lodgingImagesService.confirmUpload(
-      lodgingId,
-      dto,
-      req.user.ownerId,
-      req.user.role,
-    );
-  }
 
   @ApiUploadLodgingImageFileDoc()
   @Post()

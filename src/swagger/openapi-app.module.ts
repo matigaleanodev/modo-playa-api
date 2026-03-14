@@ -80,10 +80,8 @@ const noop = () => undefined;
     {
       provide: LodgingImagesService,
       useValue: {
-        createUploadUrl: noop,
-        createDraftUploadUrl: noop,
-        confirmDraftUpload: noop,
-        confirmUpload: noop,
+        uploadDraftImageFile: noop,
+        uploadImageFile: noop,
         setDefaultImage: noop,
         deleteImage: noop,
       },
@@ -128,8 +126,7 @@ const noop = () => undefined;
     {
       provide: UserProfileImagesService,
       useValue: {
-        createUploadUrl: noop,
-        confirmUpload: noop,
+        uploadOwnProfileImageFile: noop,
         deleteProfileImage: noop,
       },
     },

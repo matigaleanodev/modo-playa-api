@@ -8,15 +8,6 @@ import {
 
 @Injectable()
 export class NoopObjectStorageService implements ObjectStorageService {
-  createSignedPutUrl(): Promise<{
-    url: string;
-    method: 'PUT';
-    requiredHeaders: Record<string, string>;
-    expiresInSeconds: number;
-  }> {
-    return Promise.reject(new Error('ObjectStorageService no implementado'));
-  }
-
   headObject(): Promise<ObjectStorageHeadResult> {
     return Promise.reject(new Error('ObjectStorageService no implementado'));
   }

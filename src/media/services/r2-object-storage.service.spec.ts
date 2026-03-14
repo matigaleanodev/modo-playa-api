@@ -1,17 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { R2ObjectStorageService } from './r2-object-storage.service';
 
-jest.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: jest.fn(),
-}));
-
 describe('R2ObjectStorageService', () => {
-  const getSignedUrlMock = getSignedUrl as jest.MockedFunction<
-    typeof getSignedUrl
-  >;
-
   const createService = () => {
     const configService = {
       get: jest.fn((key: string) => {
@@ -21,7 +12,6 @@ describe('R2ObjectStorageService', () => {
           R2_SECRET_ACCESS_KEY: 'secret',
           R2_BUCKET: 'bucket',
           R2_REGION: 'auto',
-          R2_SIGNED_URL_EXPIRES_SECONDS: '600',
         };
         return map[key];
       }),
@@ -40,26 +30,6 @@ describe('R2ObjectStorageService', () => {
   afterEach(() => {
     jest.clearAllMocks();
     jest.restoreAllMocks();
-  });
-
-  it('debe crear signed URL de PUT sin Content-Length firmado', async () => {
-    const { service } = createService();
-    getSignedUrlMock.mockResolvedValue('https://signed-url');
-
-    const result = await service.createSignedPutUrl({
-      key: 'lodgings/x/staging',
-      contentType: 'image/jpeg',
-    });
-
-    expect(getSignedUrlMock).toHaveBeenCalled();
-    expect(result).toEqual({
-      url: 'https://signed-url',
-      method: 'PUT',
-      requiredHeaders: {
-        'Content-Type': 'image/jpeg',
-      },
-      expiresInSeconds: 600,
-    });
   });
 
   it('debe devolver exists=true en headObject cuando storage responde', async () => {
