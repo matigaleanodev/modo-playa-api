@@ -6,7 +6,7 @@ export function buildSwaggerConfig() {
     .setDescription(
       'Modo Playa API es el backend de una plataforma de catalogo de alojamientos pensada para alquileres turisticos.',
     )
-    .setVersion('1.0.0')
+    .setVersion('1.1.0')
     .addBearerAuth(
       {
         type: 'http',

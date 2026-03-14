@@ -45,7 +45,11 @@ export class ContactsController {
     @Body() dto: CreateContactDto,
     @Req() req: Request & { user: RequestUser },
   ): Promise<ContactResponseDto> {
-    const contact = await this.contactsService.create(dto, req.user.ownerId);
+    const contact = await this.contactsService.create(
+      dto,
+      req.user.ownerId,
+      req.user.role,
+    );
 
     return ContactMapper.toResponse(contact);
   }

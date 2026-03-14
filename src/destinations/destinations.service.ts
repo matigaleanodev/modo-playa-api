@@ -36,7 +36,9 @@ export class DestinationsService {
     ]);
 
     return {
+      destinationId: destination.id,
       destination: destination.name,
+      timezone: destination.timezone,
       weather: weatherContext.weather,
       forecast: weatherContext.forecast,
       sun: sunContext,

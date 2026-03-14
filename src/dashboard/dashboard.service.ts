@@ -97,7 +97,7 @@ export class DashboardService {
   ): Promise<DashboardSummaryResponseDto> {
     const ownerObjectId = toObjectIdOrThrow(ownerId, {
       message: 'Invalid owner id',
-      errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: 400,
     });
     const scopedOwnerId = role === 'SUPERADMIN' ? null : ownerObjectId;
@@ -448,7 +448,7 @@ export class DashboardService {
 
     return {
       items,
-      source: items.length > 0 ? 'derived' : 'none',
+      source: items.length > 0 ? 'timestamps' : 'none',
     };
   }
 

@@ -30,7 +30,7 @@ Completar especialmente:
 - MongoDB / JWT / Resend
 - Variables de Cloudflare R2 (`R2_*`)
 - `MEDIA_PUBLIC_BASE_URL` (dominio público/custom domain o URL pública de R2)
-- `SUPERADMIN_ID` (opcional, para habilitar rol `SUPERADMIN` por ID)
+- `SUPERADMIN_OWNER_ID` (opcional, para habilitar rol `SUPERADMIN` por ownerId)
 
 Ejemplo mínimo:
 
@@ -68,13 +68,17 @@ http://localhost:3000/api
 Notas:
 
 - `GET /api/admin/dashboard/summary` expone métricas y alertas operativas para el owner autenticado.
+- `recentActivity` dentro del dashboard usa `source=timestamps` para indicar que el bloque se deriva desde `createdAt/updatedAt`; no es una auditoría persistida.
 - `GET /api/destinations` y `GET /api/destinations/:id/context` son endpoints públicos de destinos.
-- `POST /api/admin/lodgings/with-images` y `PATCH /api/admin/lodgings/:id/with-images` unifican datos + imágenes de alojamiento por backend.
-- `POST /api/admin/users/:id/profile-image/upload` permite subir imagen de perfil directo al backend.
+- `POST /api/admin/lodging-image-uploads/upload-url` y `POST /api/admin/lodging-image-uploads/confirm` resuelven imágenes iniciales antes de crear el lodging.
+- `POST /api/admin/lodgings` puede asociar `pendingImageIds` + `uploadSessionId` en la misma operación de alta.
+- `POST /api/admin/lodgings/:lodgingId/images/upload-url` y `POST /api/admin/lodgings/:lodgingId/images/confirm` gestionan imágenes de lodgings ya existentes.
+- `POST /api/auth/me/profile-image/upload-url` y `POST /api/auth/me/profile-image/confirm` gestionan la imagen propia del usuario autenticado y solo aplican a `OWNER`.
 - `GET /api/admin/media/health` permite validar conexión con R2 (requiere JWT).
-- La recomendación actual es flujo backend-only para imágenes (sin signed URL desde frontend).
+- El flujo canonico de media es `signed upload + confirmacion backend`.
 - La validación global rechaza campos no definidos en DTOs (`whitelist + forbidNonWhitelisted`).
   Ejemplo: en `POST /api/admin/contacts` no enviar `id` en el body.
+- Los errores de contrato y dominio exponen `code` estables y explícitos. Para consumidores, usar `code` como discriminador principal y no solo `message`.
 
 ---
 

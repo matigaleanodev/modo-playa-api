@@ -125,12 +125,9 @@ describe('LodgingsPublicController', () => {
             mediaImages: [
               {
                 imageId: 'img-1',
-                key: 'lodgings/1/original.webp',
                 isDefault: true,
                 width: 1280,
                 height: 720,
-                bytes: 123456,
-                mime: 'image/webp',
                 createdAt: '2026-01-01T00:00:00.000Z',
                 url: 'https://media.test/lodgings/1/original.webp',
                 variants: {
@@ -141,12 +138,9 @@ describe('LodgingsPublicController', () => {
               },
               {
                 imageId: 'img-2',
-                key: 'lodgings/1/gallery.webp',
                 isDefault: false,
                 width: 1280,
                 height: 720,
-                bytes: 123456,
-                mime: 'image/webp',
                 createdAt: '2026-01-02T00:00:00.000Z',
                 url: 'https://media.test/lodgings/1/gallery.webp',
                 variants: {
@@ -157,6 +151,7 @@ describe('LodgingsPublicController', () => {
               },
             ],
             occupiedRanges: [{ from: '2026-02-01', to: '2026-02-05' }],
+            contact: undefined,
           },
         ],
       });
@@ -226,12 +221,9 @@ describe('LodgingsPublicController', () => {
         mediaImages: [
           {
             imageId: 'img-1',
-            key: 'lodgings/123/original.webp',
             isDefault: true,
             width: 1280,
             height: 720,
-            bytes: 123456,
-            mime: 'image/webp',
             createdAt: '2026-01-01T00:00:00.000Z',
             url: 'https://media.test/lodgings/123/original.webp',
             variants: {
@@ -242,12 +234,9 @@ describe('LodgingsPublicController', () => {
           },
           {
             imageId: 'img-2',
-            key: 'lodgings/123/gallery.webp',
             isDefault: false,
             width: 1280,
             height: 720,
-            bytes: 123456,
-            mime: 'image/webp',
             createdAt: '2026-01-02T00:00:00.000Z',
             url: 'https://media.test/lodgings/123/gallery.webp',
             variants: {
@@ -258,6 +247,7 @@ describe('LodgingsPublicController', () => {
           },
         ],
         occupiedRanges: [{ from: '2026-03-10', to: '2026-03-12' }],
+        contact: undefined,
       });
     });
   });

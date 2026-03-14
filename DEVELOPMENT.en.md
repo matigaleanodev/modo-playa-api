@@ -30,7 +30,7 @@ Make sure to fill in:
 - MongoDB / JWT / Resend settings
 - Cloudflare R2 variables (`R2_*`)
 - `MEDIA_PUBLIC_BASE_URL` (custom/public media domain)
-- `SUPERADMIN_ID` (optional, to enable `SUPERADMIN` role by user ID)
+- `SUPERADMIN_OWNER_ID` (optional, to enable `SUPERADMIN` role by ownerId)
 
 Minimal example:
 
@@ -68,13 +68,17 @@ http://localhost:3000/api
 Notes:
 
 - `GET /api/admin/dashboard/summary` returns owner-scoped metrics and operational alerts.
+- `recentActivity` inside dashboard uses `source=timestamps` to indicate that the block is derived from `createdAt/updatedAt`; it is not a persisted audit log.
 - `GET /api/destinations` and `GET /api/destinations/:id/context` are public destinations endpoints.
-- `POST /api/admin/lodgings/with-images` and `PATCH /api/admin/lodgings/:id/with-images` provide unified lodging data + image handling in backend.
-- `POST /api/admin/users/:id/profile-image/upload` uploads profile images directly to backend.
+- `POST /api/admin/lodging-image-uploads/upload-url` and `POST /api/admin/lodging-image-uploads/confirm` handle initial images before the lodging exists.
+- `POST /api/admin/lodgings` can associate `pendingImageIds` + `uploadSessionId` in the same create operation.
+- `POST /api/admin/lodgings/:lodgingId/images/upload-url` and `POST /api/admin/lodgings/:lodgingId/images/confirm` manage images for existing lodgings.
+- `POST /api/auth/me/profile-image/upload-url` and `POST /api/auth/me/profile-image/confirm` manage the authenticated user's own profile image and are restricted to `OWNER`.
 - `GET /api/admin/media/health` validates R2 connectivity (JWT required).
-- Current recommendation is backend-only image flow (no signed URL upload from frontend).
+- The canonical media flow is `signed upload + backend confirmation`.
 - Global validation rejects undefined DTO fields (`whitelist + forbidNonWhitelisted`).
   Example: do not send `id` in `POST /api/admin/contacts` body.
+- Contract and domain errors expose stable explicit `code` values. Consumers should branch on `code`, not only on `message`.
 
 ---
 

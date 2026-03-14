@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
-import { PassThrough, Readable } from 'stream';
+import { PassThrough } from 'stream';
 import { pipeline } from 'stream/promises';
 import { ERROR_CODES } from '@common/constants/error-code';
 import { DomainException } from '@common/exceptions/domain.exception';
@@ -48,7 +48,8 @@ export class UserProfileImagesService {
     this.assertAllowedMime(dto.mime);
     this.assertSizeWithinLimit(dto.size, this.getUserProfileMaxBytes());
 
-    await this.findOwnedUserOrThrow(ownerId, userId);
+    const user = await this.findOwnedUserOrThrow(ownerId, userId);
+    await this.cleanupExpiredPendingUploads(user);
 
     const imageId = randomUUID();
     const stagingKey = this.buildStagingKey(userId, imageId);
@@ -61,12 +62,12 @@ export class UserProfileImagesService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         ownerId: toObjectIdOrThrow(ownerId, {
           message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -115,6 +116,23 @@ export class UserProfileImagesService {
     }
 
     const expectedStagingKey = this.buildStagingKey(userId, dto.imageId);
+    if (dto.key !== expectedStagingKey) {
+      throw new DomainException(
+        'Invalid profile image upload key',
+        ERROR_CODES.LODGING_IMAGE_UPLOAD_INVALID_KEY,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const removedExpiredIds = await this.cleanupExpiredPendingUploads(user);
+    if (removedExpiredIds.has(dto.imageId)) {
+      throw new DomainException(
+        'Pending profile image upload expired',
+        ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const pendingUploads = this.getPendingUploads(user);
     const pending = pendingUploads.find((item) => item.imageId === dto.imageId);
 
@@ -194,12 +212,12 @@ export class UserProfileImagesService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         ownerId: toObjectIdOrThrow(ownerId, {
           message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         'pendingProfileImageUploads.imageId': dto.imageId,
@@ -271,12 +289,12 @@ export class UserProfileImagesService {
       {
         _id: toObjectIdOrThrow(userId, {
           message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_USER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
         ownerId: toObjectIdOrThrow(ownerId, {
           message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
       },
@@ -291,104 +309,6 @@ export class UserProfileImagesService {
     return { deleted: true };
   }
 
-  async uploadProfileImage(
-    ownerId: string,
-    userId: string,
-    file: { buffer: Buffer; mimetype: string; size: number },
-  ): Promise<ConfirmUserProfileImageResponseDto> {
-    this.assertAllowedMime(file.mimetype);
-    this.assertSizeWithinLimit(file.size, this.getUserProfileMaxBytes());
-
-    const user = await this.findOwnedUserOrThrow(ownerId, userId);
-    const currentProfileImage = user.profileImage;
-    const imageId = randomUUID();
-    const finalKey = this.buildFinalKey(userId, imageId);
-    const handle = this.imageProcessor.createLodgingNormalizerTransform({
-      maxWidth: this.getUserProfileMaxWidth(),
-      maxHeight: this.getUserProfileMaxHeight(),
-      outputFormat: 'webp',
-      quality: 84,
-    });
-    const output = new PassThrough();
-    const uploadPromise = this.storage.putObject({
-      key: finalKey,
-      body: output,
-      contentType: 'image/webp',
-      cacheControl: 'public, max-age=31536000, immutable',
-    });
-
-    try {
-      await Promise.all([
-        uploadPromise,
-        pipeline(
-          Readable.from(file.buffer) as NodeJS.ReadableStream,
-          handle.transform as NodeJS.WritableStream,
-          output,
-        ),
-      ]);
-    } catch (error) {
-      try {
-        await this.storage.deleteObject(finalKey);
-      } catch {
-        // best effort
-      }
-      throw error;
-    }
-
-    const metadata = await handle.getMetadata();
-    const profileImage = {
-      imageId,
-      key: finalKey,
-      width: metadata.width,
-      height: metadata.height,
-      bytes: metadata.bytes,
-      mime: metadata.mime,
-      createdAt: new Date(),
-    };
-
-    const updated = await this.userModel.findOneAndUpdate(
-      {
-        _id: toObjectIdOrThrow(userId, {
-          message: 'Invalid user id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-          httpStatus: HttpStatus.BAD_REQUEST,
-        }),
-        ownerId: toObjectIdOrThrow(ownerId, {
-          message: 'Invalid owner id',
-          errorCode: ERROR_CODES.INVALID_OBJECT_ID,
-          httpStatus: HttpStatus.BAD_REQUEST,
-        }),
-      },
-      {
-        $set: {
-          profileImage,
-          avatarUrl: this.mediaUrlBuilder.buildPublicUrl(finalKey),
-        },
-      },
-      { returnDocument: 'after' },
-    );
-
-    if (!updated?.profileImage) {
-      throw new DomainException(
-        'No se pudo actualizar la imagen de perfil',
-        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    if (currentProfileImage?.key && currentProfileImage.key !== finalKey) {
-      try {
-        await this.storage.deleteObject(currentProfileImage.key);
-      } catch {
-        // best effort
-      }
-    }
-
-    return {
-      image: this.toProfileImageResponse(updated.profileImage),
-    };
-  }
-
   private async findOwnedUserOrThrow(
     ownerId: string,
     userId: string,
@@ -396,12 +316,12 @@ export class UserProfileImagesService {
     const user = await this.userModel.findOne({
       _id: toObjectIdOrThrow(userId, {
         message: 'Invalid user id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_USER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
       ownerId: toObjectIdOrThrow(ownerId, {
         message: 'Invalid owner id',
-        errorCode: ERROR_CODES.INVALID_OBJECT_ID,
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
         httpStatus: HttpStatus.BAD_REQUEST,
       }),
     });
@@ -463,6 +383,42 @@ export class UserProfileImagesService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private async cleanupExpiredPendingUploads(
+    user: UserDocument,
+  ): Promise<Set<string>> {
+    const pendingUploads = this.getPendingUploads(user);
+    if (pendingUploads.length === 0) {
+      return new Set<string>();
+    }
+
+    const now = Date.now();
+    const expired = pendingUploads.filter(
+      (pending) => new Date(pending.expiresAt).getTime() < now,
+    );
+
+    if (expired.length === 0) {
+      return new Set<string>();
+    }
+
+    user.pendingProfileImageUploads = pendingUploads.filter(
+      (pending) =>
+        !expired.some((candidate) => candidate.imageId === pending.imageId),
+    );
+    await user.save();
+
+    await Promise.all(
+      expired.map(async (pending) => {
+        try {
+          await this.storage.deleteObject(pending.stagingKey);
+        } catch {
+          // best effort cleanup
+        }
+      }),
+    );
+
+    return new Set(expired.map((pending) => pending.imageId));
   }
 
   private toProfileImageResponse(

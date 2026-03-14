@@ -42,7 +42,7 @@ export const dashboardSummaryResponseExample = {
     ],
   },
   recentActivity: {
-    source: 'derived',
+    source: 'timestamps',
     items: [
       {
         kind: 'lodging',

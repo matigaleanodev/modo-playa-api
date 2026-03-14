@@ -25,7 +25,7 @@ export function ApiCreateContactDoc() {
     ApiOperation({
       summary: 'Crear contacto',
       description:
-        'Crea un nuevo contacto asociado al owner autenticado. Si isDefault=true, desmarca el anterior default.',
+        'Crea un nuevo contacto asociado al owner autenticado. SUPERADMIN puede crear en nombre de otro owner usando targetOwnerId. Si isDefault=true, desmarca el anterior default.',
     }),
     ApiCreatedResponseWithType(ContactResponseDto, {
       description: 'Contacto creado correctamente',

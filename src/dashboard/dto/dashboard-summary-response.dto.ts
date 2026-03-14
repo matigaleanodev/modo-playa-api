@@ -122,7 +122,11 @@ class DashboardRecentActivityItemDto {
   @ApiProperty({ enum: ['lodging', 'contact', 'user'] })
   kind!: 'lodging' | 'contact' | 'user';
 
-  @ApiProperty({ enum: ['created', 'updated'] })
+  @ApiProperty({
+    enum: ['created', 'updated'],
+    description:
+      'Accion derivada comparando createdAt y updatedAt. No representa una auditoria persistida.',
+  })
   action!: 'created' | 'updated';
 
   @ApiProperty()
@@ -131,16 +135,27 @@ class DashboardRecentActivityItemDto {
   @ApiProperty()
   title!: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description:
+      'Timestamp derivado desde updatedAt o createdAt del recurso origen.',
+  })
   timestamp!: string;
 }
 
 class DashboardRecentActivityDto {
-  @ApiProperty({ type: [DashboardRecentActivityItemDto] })
+  @ApiProperty({
+    type: [DashboardRecentActivityItemDto],
+    description:
+      'Actividad reciente derivada heurísticamente desde timestamps de entidades. No es un event log.',
+  })
   items!: DashboardRecentActivityItemDto[];
 
-  @ApiProperty({ enum: ['derived', 'none'] })
-  source!: 'derived' | 'none';
+  @ApiProperty({
+    enum: ['timestamps', 'none'],
+    description:
+      'Origen del bloque de actividad reciente. `timestamps` indica derivacion desde createdAt/updatedAt.',
+  })
+  source!: 'timestamps' | 'none';
 }
 
 class DashboardAlertDto {

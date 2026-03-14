@@ -54,8 +54,9 @@ export class UsersController {
     @Query() query: UsersQueryDto,
     @Req() req: Request & { user: RequestUser },
   ): Promise<PaginatedResponse<UserResponseDto>> {
-    const result = await this.usersService.findAllByOwner(
+    const result = await this.usersService.findAllByScope(
       req.user.ownerId,
+      req.user.role,
       query,
     );
     const data: UserResponseDto[] = result.data.map((user) =>
@@ -76,7 +77,11 @@ export class UsersController {
     @Param('id') id: string,
     @Req() req: Request & { user: RequestUser },
   ): Promise<UserResponseDto> {
-    const user = await this.usersService.findById(req.user.ownerId, id);
+    const user = await this.usersService.findById(
+      req.user.ownerId,
+      id,
+      req.user.role,
+    );
 
     return UsersMapper.toResponse(user);
   }
@@ -88,7 +93,12 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @Req() req: Request & { user: RequestUser },
   ): Promise<UserResponseDto> {
-    const user = await this.usersService.updateUser(req.user.ownerId, id, dto);
+    const user = await this.usersService.updateUser(
+      req.user.ownerId,
+      id,
+      dto,
+      req.user.role,
+    );
 
     return UsersMapper.toResponse(user);
   }

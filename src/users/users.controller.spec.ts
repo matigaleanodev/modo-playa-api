@@ -11,7 +11,7 @@ describe('UsersController', () => {
 
   const mockService = {
     createUser: jest.fn(),
-    findAllByOwner: jest.fn(),
+    findAllByScope: jest.fn(),
     findById: jest.fn(),
     updateUser: jest.fn(),
   };
@@ -70,9 +70,9 @@ describe('UsersController', () => {
     expect(result.email).toBe(dto.email);
   });
 
-  it('debe delegar findAllByOwner con ownerId del JWT', async () => {
+  it('debe delegar findAllByScope con ownerId y role del JWT', async () => {
     const query = { page: 1, limit: 10 };
-    mockService.findAllByOwner.mockResolvedValue({
+    mockService.findAllByScope.mockResolvedValue({
       data: [
         {
           _id: '1',
@@ -88,8 +88,9 @@ describe('UsersController', () => {
 
     const result = await controller.findAll(query, mockRequest);
 
-    expect(mockService.findAllByOwner).toHaveBeenCalledWith(
+    expect(mockService.findAllByScope).toHaveBeenCalledWith(
       mockUser.ownerId,
+      mockUser.role,
       query,
     );
 
@@ -97,7 +98,7 @@ describe('UsersController', () => {
     expect(result.total).toBe(1);
   });
 
-  it('debe delegar findById con ownerId del JWT', async () => {
+  it('debe delegar findById con ownerId y role del JWT', async () => {
     mockService.findById.mockResolvedValue({
       _id: 'user-id',
       email: 'test@mail.com',
@@ -110,12 +111,13 @@ describe('UsersController', () => {
     expect(mockService.findById).toHaveBeenCalledWith(
       mockUser.ownerId,
       'user-id',
+      mockUser.role,
     );
 
     expect(result.id).toBe('user-id');
   });
 
-  it('debe delegar updateUser con ownerId del JWT', async () => {
+  it('debe delegar updateUser con ownerId y role del JWT', async () => {
     const dto: UpdateUserDto = {
       firstName: 'Juan',
     };
@@ -134,6 +136,7 @@ describe('UsersController', () => {
       mockUser.ownerId,
       'user-id',
       dto,
+      mockUser.role,
     );
 
     expect(result.id).toBe('user-id');

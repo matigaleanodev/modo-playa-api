@@ -57,7 +57,7 @@ Multi-tenancy is implemented through:
 - Owner-based user creation
 - Owner-based listing
 - Update and deactivation
-- Profile image managed directly by backend (multipart)
+- Own profile image managed with signed upload + backend confirmation
 
 ### 📇 Contacts
 
@@ -74,7 +74,7 @@ Multi-tenancy is implemented through:
 - Availability range validation
 - Contact relation
 - Image management (up to 5) with default image
-- Unified create/update with images via backend (`multipart/form-data`)
+- Create flow with initial images through pending uploads + final association in `create`
 - Backend WebP normalization for uploaded images
 
 ### 📊 Dashboard
@@ -82,7 +82,7 @@ Multi-tenancy is implemented through:
 - Consolidated admin summary
 - Lodgings, contacts, and users metrics
 - Prioritized operational alerts (for example, create a contact before lodgings)
-- Owner-scoped recent activity feed
+- Recent activity heuristically derived from `createdAt/updatedAt` (`source=timestamps`), not a persisted audit log
 
 ### 🌤️ Destinations
 
@@ -114,12 +114,15 @@ All endpoints are under:
 Examples:
 
 - `POST /api/auth/login`
+- `POST /api/auth/me/profile-image/upload-url`
+- `POST /api/auth/me/profile-image/confirm`
 - `GET /api/lodgings`
 - `GET /api/admin/lodgings`
 - `POST /api/admin/contacts`
-- `POST /api/admin/lodgings/with-images`
-- `PATCH /api/admin/lodgings/:id/with-images`
-- `POST /api/admin/users/:id/profile-image/upload`
+- `POST /api/admin/lodging-image-uploads/upload-url`
+- `POST /api/admin/lodging-image-uploads/confirm`
+- `POST /api/admin/lodgings/:lodgingId/images/upload-url`
+- `POST /api/admin/lodgings/:lodgingId/images/confirm`
 - `GET /api/admin/dashboard/summary`
 - `GET /api/destinations`
 - `GET /api/destinations/:id/context`
@@ -127,6 +130,14 @@ Examples:
 Global validation uses `whitelist + forbidNonWhitelisted`, so undefined
 fields in DTOs are rejected (for example, do not send `id` in
 `POST /api/admin/contacts`).
+
+Contract and domain errors expose explicit response `code` values (for
+example `INVALID_DESTINATION_ID`, `INVALID_TARGET_OWNER_ID`,
+`INVALID_PRICE_RANGE`, `PROFILE_IMAGE_FORBIDDEN_FOR_SUPERADMIN`) so
+clients do not need to rely only on `message` text.
+
+`auth/me/profile-image` is restricted to the authenticated `OWNER`.
+`SUPERADMIN` cannot manage user profile images through that endpoint.
 
 ---
 

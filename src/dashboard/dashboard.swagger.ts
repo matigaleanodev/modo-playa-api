@@ -16,7 +16,7 @@ export function ApiDashboardSummaryDoc() {
     ApiOperation({
       summary: 'Resumen consolidado del dashboard admin',
       description:
-        'Devuelve metricas, distribuciones, alertas y actividad reciente del owner autenticado. SUPERADMIN puede obtener resumen global.',
+        'Devuelve metricas, distribuciones, alertas y actividad reciente del owner autenticado. SUPERADMIN puede obtener resumen global. `recentActivity` es una vista heuristica derivada desde `createdAt/updatedAt`; no es una auditoria persistida.',
     }),
     ApiOkResponseWithType(DashboardSummaryResponseDto, {
       description: 'Resumen consolidado del panel de administracion',

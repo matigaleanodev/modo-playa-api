@@ -1,3 +1,42 @@
+export const identifierRequestExample = {
+  identifier: 'owner@modoplaya.app',
+};
+
+export const activateRequestExample = {
+  identifier: 'owner@modoplaya.app',
+  code: '123456',
+};
+
+export const loginRequestExample = {
+  identifier: 'owner@modoplaya.app',
+  password: 'Password123',
+};
+
+export const setInitialPasswordRequestExample = {
+  password: 'Password123',
+};
+
+export const changePasswordRequestExample = {
+  currentPassword: 'Password123',
+  newPassword: 'Password456',
+};
+
+export const verifyResetCodeRequestExample = {
+  identifier: 'owner@modoplaya.app',
+  code: '123456',
+};
+
+export const resetPasswordRequestExample = {
+  password: 'Password456',
+};
+
+export const updateMeRequestExample = {
+  firstName: 'Juan',
+  lastName: 'Perez',
+  displayName: 'Juan Perez',
+  phone: '+5492255123456',
+};
+
 export const authTokenResponseExample = {
   accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 };

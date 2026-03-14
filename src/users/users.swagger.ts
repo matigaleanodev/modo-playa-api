@@ -31,7 +31,7 @@ export function ApiCreateUserDoc() {
     ApiOperation({
       summary: 'Crear usuario para el owner actual',
       description:
-        'Crea un usuario asociado al owner autenticado. Limite de 3 usuarios por owner salvo SUPERADMIN.',
+        'Crea un usuario asociado al owner autenticado. SUPERADMIN puede crear en nombre de otro owner usando targetOwnerId. Limite de 3 usuarios por owner salvo SUPERADMIN.',
     }),
     ApiBody({
       type: CreateUserDto,
@@ -52,6 +52,8 @@ export function ApiFindAllUsersDoc() {
   return applyDecorators(
     ApiOperation({
       summary: 'Listar usuarios del owner actual',
+      description:
+        'Devuelve los usuarios del owner autenticado. SUPERADMIN puede listar usuarios de todos los tenants sin filtro por ownerId.',
     }),
     ApiPaginatedOkResponse(UserResponseDto, {
       description: 'Listado de usuarios',
@@ -64,6 +66,8 @@ export function ApiFindUserByIdDoc() {
   return applyDecorators(
     ApiOperation({
       summary: 'Obtener usuario por ID',
+      description:
+        'Devuelve un usuario especifico del owner autenticado. SUPERADMIN puede acceder a cualquier usuario administrativo.',
     }),
     ApiIdParam('id', 'ID del usuario'),
     ApiOkResponseWithType(UserResponseDto, {
@@ -77,6 +81,8 @@ export function ApiUpdateUserDoc() {
   return applyDecorators(
     ApiOperation({
       summary: 'Actualizar usuario',
+      description:
+        'Actualiza un usuario del owner autenticado. SUPERADMIN puede modificar usuarios de cualquier tenant.',
     }),
     ApiIdParam('id', 'ID del usuario'),
     ApiBody({

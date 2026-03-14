@@ -45,7 +45,9 @@ describe('DestinationsController', () => {
 
   it('debe delegar getContext con el id de destino', async () => {
     const expected = {
+      destinationId: DestinationId.PAMPAS,
       destination: 'Mar de las Pampas',
+      timezone: 'America/Argentina/Buenos_Aires',
       weather: { temperature: 27, windSpeed: 14, weatherCode: 3 },
       forecast: [
         { day: 'today', max: 28, min: 19 },
