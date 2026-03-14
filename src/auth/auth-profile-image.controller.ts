@@ -5,8 +5,11 @@ import {
   HttpStatus,
   Post,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from './guard/auth.guard';
 import { RequestUser } from './interfaces/request-user.interface';
 import { UserProfileImagesService } from '@users/services/user-profile-images.service';
@@ -22,7 +25,9 @@ import {
   ApiConfirmMyProfileImageUploadDoc,
   ApiCreateMyProfileImageUploadUrlDoc,
   ApiDeleteMyProfileImageDoc,
+  ApiUploadMyProfileImageFileDoc,
 } from './swagger/auth-profile-image.swagger';
+import type { UploadedImageFile } from '@media/interfaces/uploaded-image-file.interface';
 
 @ApiAuthProfileImageController()
 @Controller('auth/me/profile-image')
@@ -57,6 +62,21 @@ export class AuthProfileImageController {
       req.user.ownerId,
       req.user.userId,
       dto,
+    );
+  }
+
+  @ApiUploadMyProfileImageFileDoc()
+  @Post()
+  @UseInterceptors(FileInterceptor('file'))
+  uploadProfileImage(
+    @UploadedFile() file: UploadedImageFile,
+    @Request() req: { user: RequestUser },
+  ): Promise<ConfirmUserProfileImageResponseDto> {
+    this.assertProfileImageAllowed(req.user);
+    return this.userProfileImagesService.uploadOwnProfileImageFile(
+      req.user.ownerId,
+      req.user.userId,
+      file,
     );
   }
 

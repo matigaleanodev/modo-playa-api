@@ -6,9 +6,12 @@ import {
   Patch,
   Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
 import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
@@ -24,7 +27,9 @@ import {
   ApiDeleteLodgingImageDoc,
   ApiLodgingImagesAdminController,
   ApiSetDefaultLodgingImageDoc,
+  ApiUploadLodgingImageFileDoc,
 } from '../swagger/lodging-images-admin.swagger';
+import type { UploadedImageFile } from '@media/interfaces/uploaded-image-file.interface';
 
 @ApiLodgingImagesAdminController()
 @Controller('admin/lodgings/:lodgingId/images')
@@ -57,6 +62,22 @@ export class LodgingImagesAdminController {
     return this.lodgingImagesService.confirmUpload(
       lodgingId,
       dto,
+      req.user.ownerId,
+      req.user.role,
+    );
+  }
+
+  @ApiUploadLodgingImageFileDoc()
+  @Post()
+  @UseInterceptors(FileInterceptor('file'))
+  uploadFile(
+    @Param('lodgingId') lodgingId: string,
+    @UploadedFile() file: UploadedImageFile,
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<ConfirmLodgingImageResponseDto> {
+    return this.lodgingImagesService.uploadImageFile(
+      lodgingId,
+      file,
       req.user.ownerId,
       req.user.role,
     );

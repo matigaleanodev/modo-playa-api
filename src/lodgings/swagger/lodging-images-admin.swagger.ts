@@ -9,6 +9,7 @@ import { DeleteLodgingImageResponseDto } from '../dto/delete-lodging-image-respo
 import { LodgingImageUploadUrlResponseDto } from '../dto/lodging-image-upload-url-response.dto';
 import { SetDefaultLodgingImageResponseDto } from '../dto/set-default-lodging-image-response.dto';
 import { ApiIdParam } from '../../swagger/decorators/api-id-param.decorator';
+import { ApiSingleFileBody } from '../../swagger/decorators/api-single-file-body.decorator';
 
 export function ApiLodgingImagesAdminController() {
   return applyDecorators(
@@ -37,6 +38,19 @@ export function ApiConfirmLodgingImageUploadDoc() {
     ApiIdParam('lodgingId', 'ID del alojamiento'),
     ApiCreatedResponseWithType(ConfirmLodgingImageResponseDto, {
       description: 'Upload confirmado correctamente',
+    }),
+  );
+}
+
+export function ApiUploadLodgingImageFileDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Subir imagen de alojamiento por backend',
+    }),
+    ApiIdParam('lodgingId', 'ID del alojamiento'),
+    ApiSingleFileBody('file'),
+    ApiCreatedResponseWithType(ConfirmLodgingImageResponseDto, {
+      description: 'Imagen subida y procesada correctamente',
     }),
   );
 }

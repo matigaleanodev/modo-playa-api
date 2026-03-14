@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, QueryFilter, Types } from 'mongoose';
 import { randomUUID } from 'crypto';
-import { PassThrough } from 'stream';
+import { PassThrough, Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { UserRole } from '@common/interfaces/role.interface';
 import { toObjectIdOrThrow } from '@common/utils/object-id.util';
@@ -25,6 +25,7 @@ import {
 import type { ImageProcessorService } from '@media/interfaces/image-processor.interface';
 import type { ObjectStorageService } from '@media/interfaces/object-storage.service.interface';
 import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
+import type { UploadedImageFile } from '@media/interfaces/uploaded-image-file.interface';
 import { LodgingImage } from '@lodgings/schemas/lodging-image.schema';
 import { PendingLodgingImageUpload } from '@lodgings/schemas/pending-lodging-image-upload.schema';
 import { LodgingImageResponseDto } from '@lodgings/dto/lodging-image-response.dto';
@@ -103,6 +104,65 @@ export class LodgingImagesService {
       method: signed.method,
       requiredHeaders: signed.requiredHeaders,
       expiresInSeconds: signed.expiresInSeconds,
+    };
+  }
+
+  async uploadDraftImageFile(
+    dto: { uploadSessionId: string },
+    file: UploadedImageFile,
+    ownerId: string,
+  ): Promise<ConfirmDraftLodgingImageResponseDto> {
+    this.assertImageFile(file, this.getLodgingMaxBytes());
+
+    const ownerObjectId = toObjectIdOrThrow(ownerId, {
+      message: 'Invalid owner id',
+      errorCode: ERROR_CODES.INVALID_OWNER_ID,
+      httpStatus: HttpStatus.BAD_REQUEST,
+    });
+
+    await this.cleanupExpiredDraftUploads(ownerObjectId, dto.uploadSessionId);
+
+    const pendingCount = await this.pendingDraftUploadModel.countDocuments({
+      ownerId: ownerObjectId,
+      uploadSessionId: dto.uploadSessionId,
+    });
+    this.policy.assertCanReserveSlot(0, pendingCount);
+
+    const imageId = randomUUID();
+    const ttlSeconds = this.getPendingUploadTtlSeconds();
+    const stagingKey = this.buildDraftStagingKey(
+      ownerId,
+      dto.uploadSessionId,
+      imageId,
+    );
+
+    const pending = await this.pendingDraftUploadModel.create({
+      ownerId: ownerObjectId,
+      uploadSessionId: dto.uploadSessionId,
+      imageId,
+      stagingKey,
+      expiresAt: new Date(Date.now() + ttlSeconds * 1000),
+      status: 'PENDING',
+    });
+
+    try {
+      await this.storage.putObject({
+        key: stagingKey,
+        body: Readable.from(file.buffer),
+        contentType: file.mimetype,
+      });
+    } catch (error) {
+      await this.pendingDraftUploadModel.deleteOne({ _id: pending._id });
+      throw error;
+    }
+
+    pending.status = 'CONFIRMED';
+    await pending.save();
+
+    return {
+      imageId: pending.imageId,
+      uploadSessionId: pending.uploadSessionId,
+      confirmed: true,
     };
   }
 
@@ -434,6 +494,122 @@ export class LodgingImagesService {
     if (!persisted) {
       throw new DomainException(
         'Lodging image not found after confirmation',
+        ERROR_CODES.LODGING_IMAGE_NOT_FOUND,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return {
+      image: this.toLodgingImageResponse(persisted),
+    };
+  }
+
+  async uploadImageFile(
+    lodgingId: string,
+    file: UploadedImageFile,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<ConfirmLodgingImageResponseDto> {
+    this.assertImageFile(file, this.getLodgingMaxBytes());
+
+    const lodging = await this.findOwnedLodgingOrThrow(
+      lodgingId,
+      ownerId,
+      role,
+    );
+    await this.cleanupExpiredLodgingPendingUploads(lodging);
+
+    const imageId = randomUUID();
+    const finalKey = this.buildFinalKey(lodgingId, imageId);
+    const handle = this.imageProcessor.createLodgingNormalizerTransform({
+      maxWidth: this.getLodgingMaxWidth(),
+      maxHeight: this.getLodgingMaxHeight(),
+      outputFormat: 'webp',
+    });
+    const output = new PassThrough();
+
+    try {
+      const uploadPromise = this.storage.putObject({
+        key: finalKey,
+        body: output,
+        contentType: 'image/webp',
+        cacheControl: 'public, max-age=31536000, immutable',
+      });
+
+      await Promise.all([
+        uploadPromise,
+        pipeline(
+          Readable.from(file.buffer),
+          handle.transform as NodeJS.WritableStream,
+          output,
+        ),
+      ]);
+    } catch (error) {
+      try {
+        await this.storage.deleteObject(finalKey);
+      } catch {
+        // best effort cleanup
+      }
+      throw error;
+    }
+
+    const metadata = await handle.getMetadata();
+    const imageToPersist: LodgingImage = {
+      imageId,
+      key: finalKey,
+      isDefault: false,
+      width: metadata.width,
+      height: metadata.height,
+      bytes: metadata.bytes,
+      mime: metadata.mime,
+      createdAt: new Date(),
+    };
+
+    const updated = await this.lodgingModel.findOneAndUpdate(
+      {
+        ...this.buildOwnershipFilters(lodgingId, ownerId, role),
+        'mediaImages.4': { $exists: false },
+      } as QueryFilter<LodgingDocument>,
+      {
+        $push: { mediaImages: imageToPersist },
+      },
+      { returnDocument: 'after' },
+    );
+
+    if (!updated) {
+      try {
+        await this.storage.deleteObject(finalKey);
+      } catch {
+        // best effort cleanup
+      }
+
+      const current = await this.findOwnedLodgingOrThrow(lodgingId, ownerId, role);
+      this.policy.assertCanReserveSlot(
+        current.mediaImages.length,
+        current.pendingImageUploads.length,
+      );
+
+      throw new DomainException(
+        'No se pudo reservar el cupo para la imagen',
+        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    updated.mainImage =
+      updated.mediaImages.find((image) => image.isDefault)?.key ??
+      updated.mediaImages[0]?.key ??
+      '';
+    updated.images = updated.mediaImages.map((image) => image.key);
+    await this.ensureLodgingDefaultInvariant(updated);
+
+    const persisted = this.getLodgingImages(updated).find(
+      (image) => image.imageId === imageId,
+    );
+
+    if (!persisted) {
+      throw new DomainException(
+        'Lodging image not found after upload',
         ERROR_CODES.LODGING_IMAGE_NOT_FOUND,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
@@ -960,6 +1136,22 @@ export class LodgingImagesService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private assertImageFile(
+    file: UploadedImageFile | undefined,
+    maxBytes: number,
+  ): asserts file is UploadedImageFile {
+    if (!file) {
+      throw new DomainException(
+        'Image file is required',
+        ERROR_CODES.REQUEST_VALIDATION_ERROR,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    this.assertAllowedMime(file.mimetype);
+    this.assertSizeWithinLimit(file.size, maxBytes);
   }
 
   private assertSizeWithinLimit(

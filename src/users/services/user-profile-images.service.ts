@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
-import { PassThrough } from 'stream';
+import { PassThrough, Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { ERROR_CODES } from '@common/constants/error-code';
 import { DomainException } from '@common/exceptions/domain.exception';
@@ -16,6 +16,7 @@ import {
 import type { ImageProcessorService } from '@media/interfaces/image-processor.interface';
 import type { ObjectStorageService } from '@media/interfaces/object-storage.service.interface';
 import type { MediaUrlBuilder } from '@media/interfaces/media-url-builder.interface';
+import type { UploadedImageFile } from '@media/interfaces/uploaded-image-file.interface';
 import { User, UserDocument } from '@users/schemas/user.schema';
 import { RequestUserProfileImageUploadUrlDto } from '@users/dto/request-user-profile-image-upload-url.dto';
 import { UserProfileImageUploadUrlResponseDto } from '@users/dto/user-profile-image-upload-url-response.dto';
@@ -96,6 +97,111 @@ export class UserProfileImagesService {
       method: signed.method,
       requiredHeaders: signed.requiredHeaders,
       expiresInSeconds: signed.expiresInSeconds,
+    };
+  }
+
+  async uploadOwnProfileImageFile(
+    ownerId: string,
+    userId: string,
+    file: UploadedImageFile,
+  ): Promise<ConfirmUserProfileImageResponseDto> {
+    this.assertImageFile(file, this.getUserProfileMaxBytes());
+
+    const user = await this.findOwnedUserOrThrow(ownerId, userId);
+    const currentProfileImage = user.profileImage;
+    const imageId = randomUUID();
+    const finalKey = this.buildFinalKey(userId, imageId);
+    const handle = this.imageProcessor.createLodgingNormalizerTransform({
+      maxWidth: this.getUserProfileMaxWidth(),
+      maxHeight: this.getUserProfileMaxHeight(),
+      outputFormat: 'webp',
+      quality: 84,
+    });
+    const output = new PassThrough();
+
+    try {
+      const uploadPromise = this.storage.putObject({
+        key: finalKey,
+        body: output,
+        contentType: 'image/webp',
+        cacheControl: 'public, max-age=31536000, immutable',
+      });
+
+      await Promise.all([
+        uploadPromise,
+        pipeline(
+          Readable.from(file.buffer),
+          handle.transform as NodeJS.WritableStream,
+          output,
+        ),
+      ]);
+    } catch (error) {
+      try {
+        await this.storage.deleteObject(finalKey);
+      } catch {
+        // best effort cleanup
+      }
+      throw error;
+    }
+
+    const metadata = await handle.getMetadata();
+    const profileImage = {
+      imageId,
+      key: finalKey,
+      width: metadata.width,
+      height: metadata.height,
+      bytes: metadata.bytes,
+      mime: metadata.mime,
+      createdAt: new Date(),
+    };
+
+    const updated = await this.userModel.findOneAndUpdate(
+      {
+        _id: toObjectIdOrThrow(userId, {
+          message: 'Invalid user id',
+          errorCode: ERROR_CODES.INVALID_USER_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+        ownerId: toObjectIdOrThrow(ownerId, {
+          message: 'Invalid owner id',
+          errorCode: ERROR_CODES.INVALID_OWNER_ID,
+          httpStatus: HttpStatus.BAD_REQUEST,
+        }),
+      },
+      {
+        $set: {
+          profileImage,
+          avatarUrl: this.mediaUrlBuilder.buildPublicUrl(finalKey),
+          pendingProfileImageUploads: [],
+        },
+      },
+      { returnDocument: 'after' },
+    );
+
+    if (!updated?.profileImage) {
+      try {
+        await this.storage.deleteObject(finalKey);
+      } catch {
+        // best effort cleanup
+      }
+
+      throw new DomainException(
+        'No se pudo guardar la imagen de perfil',
+        ERROR_CODES.LODGING_IMAGE_INVALID_STATE,
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    if (currentProfileImage?.key && currentProfileImage.key !== finalKey) {
+      try {
+        await this.storage.deleteObject(currentProfileImage.key);
+      } catch {
+        // best effort
+      }
+    }
+
+    return {
+      image: this.toProfileImageResponse(updated.profileImage),
     };
   }
 
@@ -474,6 +580,22 @@ export class UserProfileImagesService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private assertImageFile(
+    file: UploadedImageFile | undefined,
+    maxBytes: number,
+  ): asserts file is UploadedImageFile {
+    if (!file) {
+      throw new DomainException(
+        'Image file is required',
+        ERROR_CODES.REQUEST_VALIDATION_ERROR,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    this.assertAllowedMime(file.mimetype);
+    this.assertSizeWithinLimit(file.size, maxBytes);
   }
 
   private assertSizeWithinLimit(

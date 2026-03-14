@@ -7,6 +7,7 @@ import {
 import { UserProfileImageUploadUrlResponseDto } from '@users/dto/user-profile-image-upload-url-response.dto';
 import { ConfirmUserProfileImageResponseDto } from '@users/dto/confirm-user-profile-image-response.dto';
 import { DeleteUserProfileImageResponseDto } from '@users/dto/delete-user-profile-image-response.dto';
+import { ApiSingleFileBody } from '../../swagger/decorators/api-single-file-body.decorator';
 
 export function ApiAuthProfileImageController() {
   return applyDecorators(
@@ -50,6 +51,20 @@ export function ApiDeleteMyProfileImageDoc() {
     }),
     ApiOkResponseWithType(DeleteUserProfileImageResponseDto, {
       description: 'Imagen de perfil eliminada correctamente',
+    }),
+  );
+}
+
+export function ApiUploadMyProfileImageFileDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Subir imagen de perfil propia por backend',
+      description:
+        'Recibe la imagen por multipart en la API, la procesa en backend y reemplaza la imagen previa si existe. Disponible solo para usuarios OWNER.',
+    }),
+    ApiSingleFileBody('file'),
+    ApiOkResponseWithType(ConfirmUserProfileImageResponseDto, {
+      description: 'Imagen de perfil subida correctamente',
     }),
   );
 }
