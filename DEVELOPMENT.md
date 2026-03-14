@@ -77,7 +77,7 @@ Notas:
 - `GET /api/admin/media/health` permite validar conexión con R2 (requiere JWT).
 - El flujo canonico de media es `signed upload + confirmacion backend`.
 - Los uploads firmados browser requieren CORS habilitado en el bucket de R2 para los origenes reales de `modo-playa-admin` y `modo-playa-app`.
-- El preflight minimo del bucket debe aceptar `OPTIONS, PUT`, permitir `Content-Type` y exponer `ETag`.
+- La regla CORS minima del bucket debe permitir `PUT`, aceptar el header `Content-Type` y exponer `ETag` para que el preflight browser se resuelva correctamente.
 - La validación global rechaza campos no definidos en DTOs (`whitelist + forbidNonWhitelisted`).
   Ejemplo: en `POST /api/admin/contacts` no enviar `id` en el body.
 - Los errores de contrato y dominio exponen `code` estables y explícitos. Para consumidores, usar `code` como discriminador principal y no solo `message`.
