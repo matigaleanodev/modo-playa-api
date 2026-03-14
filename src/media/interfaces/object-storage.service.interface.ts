@@ -16,18 +16,6 @@ export interface ObjectStorageGetStreamResult {
 }
 
 export interface ObjectStorageService {
-  createSignedPutUrl(input: {
-    key: string;
-    contentType: string;
-    contentLength?: number;
-    expiresInSeconds?: number;
-  }): Promise<{
-    url: string;
-    method: 'PUT';
-    requiredHeaders: Record<string, string>;
-    expiresInSeconds: number;
-  }>;
-
   headObject(key: string): Promise<ObjectStorageHeadResult>;
 
   objectExists(key: string): Promise<boolean>;

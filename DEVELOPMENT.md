@@ -48,7 +48,6 @@ R2_BUCKET=modo-playa-media
 R2_ACCESS_KEY_ID=your_r2_access_key_id
 R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
 R2_REGION=auto
-R2_SIGNED_URL_EXPIRES_SECONDS=600
 MEDIA_PUBLIC_BASE_URL=https://media.example.com
 ```
 
@@ -70,12 +69,12 @@ Notas:
 - `GET /api/admin/dashboard/summary` expone métricas y alertas operativas para el owner autenticado.
 - `recentActivity` dentro del dashboard usa `source=timestamps` para indicar que el bloque se deriva desde `createdAt/updatedAt`; no es una auditoría persistida.
 - `GET /api/destinations` y `GET /api/destinations/:id/context` son endpoints públicos de destinos.
-- `POST /api/admin/lodging-image-uploads/upload-url` y `POST /api/admin/lodging-image-uploads/confirm` resuelven imágenes iniciales antes de crear el lodging.
+- `POST /api/admin/lodging-image-uploads` recibe la imagen inicial por multipart, la sube a R2 desde backend y la deja lista antes de crear el lodging.
 - `POST /api/admin/lodgings` puede asociar `pendingImageIds` + `uploadSessionId` en la misma operación de alta.
-- `POST /api/admin/lodgings/:lodgingId/images/upload-url` y `POST /api/admin/lodgings/:lodgingId/images/confirm` gestionan imágenes de lodgings ya existentes.
-- `POST /api/auth/me/profile-image/upload-url` y `POST /api/auth/me/profile-image/confirm` gestionan la imagen propia del usuario autenticado y solo aplican a `OWNER`.
+- `POST /api/admin/lodgings/:lodgingId/images` gestiona altas de imágenes de lodgings ya existentes por multipart backend-only.
+- `POST /api/auth/me/profile-image` gestiona la imagen propia del usuario autenticado por multipart backend-only y solo aplica a `OWNER`.
 - `GET /api/admin/media/health` permite validar conexión con R2 (requiere JWT).
-- El flujo canonico de media es `signed upload + confirmacion backend`.
+- El flujo canonico de media es `multipart backend-only`: el frontend entrega archivos a la API y solo el backend interactúa con R2.
 - La validación global rechaza campos no definidos en DTOs (`whitelist + forbidNonWhitelisted`).
   Ejemplo: en `POST /api/admin/contacts` no enviar `id` en el body.
 - Los errores de contrato y dominio exponen `code` estables y explícitos. Para consumidores, usar `code` como discriminador principal y no solo `message`.

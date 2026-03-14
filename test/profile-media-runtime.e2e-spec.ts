@@ -9,12 +9,11 @@ import { getModelToken } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { Readable, PassThrough } from 'stream';
+import { PassThrough, Readable } from 'stream';
 import { Types } from 'mongoose';
 import { JwtAuthGuard } from '../src/auth/guard/auth.guard';
 import { RequestUser } from '../src/auth/interfaces/request-user.interface';
 import { AuthProfileImageController } from '../src/auth/auth-profile-image.controller';
-import { ERROR_CODES } from '../src/common/constants/error-code';
 import { createAppValidationPipe } from '../src/common/pipes/app-validation.pipe';
 import {
   IMAGE_PROCESSOR_SERVICE,
@@ -41,13 +40,6 @@ type UserRecord = {
     mime: string;
     createdAt: Date;
   };
-  pendingProfileImageUploads: Array<{
-    imageId: string;
-    stagingKey: string;
-    createdAt: Date;
-    expiresAt: Date;
-    status: 'PENDING';
-  }>;
   save: () => Promise<UserRecord>;
 };
 
@@ -69,24 +61,6 @@ class TestJwtAuthGuard implements CanActivate {
 class InMemoryObjectStorageService {
   readonly objects = new Map<string, { body: Buffer; mime: string }>();
 
-  createSignedPutUrl(input: {
-    key: string;
-    contentType: string;
-    contentLength?: number;
-  }) {
-    return Promise.resolve({
-      url: `https://signed.test/${input.key}`,
-      method: 'PUT' as const,
-      requiredHeaders: {
-        'Content-Type': input.contentType,
-        ...(input.contentLength !== undefined
-          ? { 'Content-Length': String(input.contentLength) }
-          : {}),
-      },
-      expiresInSeconds: 600,
-    });
-  }
-
   headObject(key: string) {
     const object = this.objects.get(key);
     if (!object) {
@@ -98,6 +72,10 @@ class InMemoryObjectStorageService {
       bytes: object.body.length,
       mime: object.mime,
     });
+  }
+
+  objectExists(key: string) {
+    return Promise.resolve(this.objects.has(key));
   }
 
   getObjectStream(key: string) {
@@ -129,10 +107,6 @@ class InMemoryObjectStorageService {
   deleteObject(key: string): Promise<void> {
     this.objects.delete(key);
     return Promise.resolve();
-  }
-
-  seedObject(key: string, body: Buffer, mime: string) {
-    this.objects.set(key, { body, mime });
   }
 }
 
@@ -169,7 +143,6 @@ class InMemoryUserModel {
       isPasswordSet: true,
       avatarUrl: null,
       profileImage: null,
-      pendingProfileImageUploads: [],
       save: () => {
         const index = InMemoryUserModel.records.findIndex((item) =>
           item._id.equals(record._id),
@@ -218,18 +191,9 @@ class InMemoryUserModel {
       return Promise.resolve({ acknowledged: true, matchedCount: 0 });
     }
 
-    const push = update.$push as
-      | {
-          pendingProfileImageUploads?: UserRecord['pendingProfileImageUploads'][number];
-        }
-      | undefined;
     const set = update.$set as
       | { profileImage?: UserRecord['profileImage']; avatarUrl?: string | null }
       | undefined;
-
-    if (push?.pendingProfileImageUploads) {
-      user.pendingProfileImageUploads.push(push.pendingProfileImageUploads);
-    }
 
     if (set) {
       if ('profileImage' in set) {
@@ -255,15 +219,6 @@ class InMemoryUserModel {
         if (!record.ownerId.equals(filters.ownerId as Types.ObjectId)) {
           return false;
         }
-        const pendingImageId = filters['pendingProfileImageUploads.imageId'];
-        if (
-          pendingImageId &&
-          !record.pendingProfileImageUploads.some(
-            (pending) => pending.imageId === pendingImageId,
-          )
-        ) {
-          return false;
-        }
         return true;
       }) ?? null;
 
@@ -275,15 +230,9 @@ class InMemoryUserModel {
       profileImage: NonNullable<UserRecord['profileImage']>;
       avatarUrl: string;
     };
-    const pull = update.$pull as {
-      pendingProfileImageUploads: { imageId: string };
-    };
 
     user.profileImage = set.profileImage;
     user.avatarUrl = set.avatarUrl;
-    user.pendingProfileImageUploads = user.pendingProfileImageUploads.filter(
-      (pending) => pending.imageId !== pull.pendingProfileImageUploads.imageId,
-    );
 
     return Promise.resolve(user);
   }
@@ -293,7 +242,6 @@ const configServiceStub = {
   get: (key: string) => {
     const values: Record<string, string> = {
       IMAGE_ALLOWED_MIME: 'image/png,image/jpeg,image/webp',
-      PENDING_UPLOAD_TTL_SECONDS: '1800',
       USER_PROFILE_IMAGE_MAX_BYTES: String(5 * 1024 * 1024),
       USER_PROFILE_IMAGE_MAX_WIDTH: '1024',
       USER_PROFILE_IMAGE_MAX_HEIGHT: '1024',
@@ -372,72 +320,21 @@ describe('Profile media runtime flow (e2e)', () => {
     }
   });
 
-  it('ejecuta upload-url y confirm de profile image con service real', async () => {
-    const uploadResponse = await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/upload-url')
-      .send({
-        mime: 'image/png',
-        size: 12,
+  it('ejecuta upload de profile image con service real', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/me/profile-image')
+      .attach('file', Buffer.from('fake-image'), {
+        filename: 'profile.png',
+        contentType: 'image/png',
       })
       .expect(201);
 
-    const { imageId, uploadKey } = uploadResponse.body as {
-      imageId: string;
-      uploadKey: string;
-    };
-
-    storage.seedObject(uploadKey, Buffer.from('fake-image'), 'image/png');
-
-    const confirmResponse = await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/confirm')
-      .send({
-        imageId,
-        key: uploadKey,
-      })
-      .expect(201);
-
-    const body = confirmResponse.body as {
+    const body = response.body as {
       image: { imageId: string; key: string };
     };
 
-    expect(body.image.imageId).toBe(imageId);
+    expect(body.image.imageId).toBeTruthy();
     expect(body.image.key).toContain('/original.webp');
-    expect(storage.objects.has(uploadKey)).toBe(false);
-  });
-
-  it('rechaza confirm de profile image expirado y limpia pending + staging', async () => {
-    const uploadResponse = await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/upload-url')
-      .send({
-        mime: 'image/png',
-        size: 12,
-      })
-      .expect(201);
-
-    const { imageId, uploadKey } = uploadResponse.body as {
-      imageId: string;
-      uploadKey: string;
-    };
-
-    const user = InMemoryUserModel.records[0];
-    user.pendingProfileImageUploads[0].expiresAt = new Date(
-      Date.now() - 60_000,
-    );
-    storage.seedObject(uploadKey, Buffer.from('fake-image'), 'image/png');
-
-    await request(app.getHttpServer())
-      .post('/api/auth/me/profile-image/confirm')
-      .send({
-        imageId,
-        key: uploadKey,
-      })
-      .expect(400)
-      .expect({
-        message: 'Pending profile image upload expired',
-        code: ERROR_CODES.LODGING_IMAGE_PENDING_EXPIRED,
-      });
-
-    expect(user.pendingProfileImageUploads).toHaveLength(0);
-    expect(storage.objects.has(uploadKey)).toBe(false);
+    expect(Array.from(storage.objects.keys())[0]).toContain('/original.webp');
   });
 });

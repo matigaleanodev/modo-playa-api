@@ -8,15 +8,6 @@ describe('NoopObjectStorageService', () => {
     service = new NoopObjectStorageService();
   });
 
-  it('debe rechazar createSignedPutUrl', async () => {
-    await expect(
-      service.createSignedPutUrl({
-        key: 'a',
-        contentType: 'image/jpeg',
-      }),
-    ).rejects.toThrow('ObjectStorageService no implementado');
-  });
-
   it('debe devolver un stream vacío en getObjectStream', async () => {
     const result = await service.getObjectStream('a');
     const chunks: Buffer[] = [];

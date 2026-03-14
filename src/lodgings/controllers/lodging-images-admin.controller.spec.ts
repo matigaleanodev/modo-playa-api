@@ -8,8 +8,7 @@ describe('LodgingImagesAdminController', () => {
   let controller: LodgingImagesAdminController;
 
   const mockLodgingImagesService = {
-    createUploadUrl: jest.fn(),
-    confirmUpload: jest.fn(),
+    uploadImageFile: jest.fn(),
     setDefaultImage: jest.fn(),
     deleteImage: jest.fn(),
   };
@@ -45,36 +44,21 @@ describe('LodgingImagesAdminController', () => {
     jest.clearAllMocks();
   });
 
-  it('debe delegar createUploadUrl con ownerId y role del usuario autenticado', async () => {
-    const dto = { mime: 'image/png', size: 1234 };
-    mockLodgingImagesService.createUploadUrl.mockResolvedValue({
-      imageId: 'img-1',
-    });
-
-    await controller.createUploadUrl('lodging-1', dto, mockRequest);
-
-    expect(mockLodgingImagesService.createUploadUrl).toHaveBeenCalledWith(
-      'lodging-1',
-      dto,
-      mockUser.ownerId,
-      mockUser.role,
-    );
-  });
-
-  it('debe delegar confirmUpload con ownerId y role del usuario autenticado', async () => {
-    const dto = {
-      imageId: 'img-1',
-      key: 'lodgings/lodging-1/img-1/staging-upload',
+  it('debe delegar uploadFile con ownerId y role del usuario autenticado', async () => {
+    const file = {
+      buffer: Buffer.from('image'),
+      mimetype: 'image/png',
+      size: 5,
     };
-    mockLodgingImagesService.confirmUpload.mockResolvedValue({
+    mockLodgingImagesService.uploadImageFile.mockResolvedValue({
       image: { imageId: 'img-1' },
     });
 
-    await controller.confirmUpload('lodging-1', dto, mockRequest);
+    await controller.uploadFile('lodging-1', file, mockRequest);
 
-    expect(mockLodgingImagesService.confirmUpload).toHaveBeenCalledWith(
+    expect(mockLodgingImagesService.uploadImageFile).toHaveBeenCalledWith(
       'lodging-1',
-      dto,
+      file,
       mockUser.ownerId,
       mockUser.role,
     );
