@@ -11,35 +11,36 @@ export const POINTS_OF_INTEREST_MAP: Readonly<
   [DestinationId.GESELL]: [
     {
       id: 'hospital',
-      title: 'Hospital Municipal',
+      title: 'Hospital Municipal Arturo Illia',
       category: 'healthcare',
-      summary: 'Referencia sanitaria principal para guardia y atencion medica.',
+      summary:
+        'Principal referencia sanitaria de Villa Gesell para guardia, consultas y derivaciones.',
       googleMapsUrl: createGoogleMapsSearchUrl(
         'Hospital Municipal Arturo Illia Villa Gesell',
       ),
-      highlight: 'Atencion de salud',
+      highlight: 'Guardia y salud',
       displayOrder: 1,
     },
     {
       id: 'police',
-      title: 'Policia',
+      title: 'Comisaria Primera',
       category: 'safety',
       summary:
-        'Punto de referencia para asistencia policial y seguridad publica.',
+        'Dependencia policial de referencia en la zona centrica para asistencia y seguridad publica.',
       googleMapsUrl: createGoogleMapsSearchUrl(
-        'Comisaria Villa Gesell Buenos Aires',
+        'Comisaria Primera Villa Gesell Buenos Aires',
       ),
       highlight: 'Seguridad',
       displayOrder: 2,
     },
     {
       id: 'downtown',
-      title: 'Centro de la ciudad',
+      title: 'Plaza Primera Junta y centro',
       category: 'downtown',
       summary:
-        'Zona comercial y de paseo con mayor concentracion de servicios.',
+        'Nucleo turistico y comercial sobre Avenida 3, util para ubicarse y resolver servicios.',
       googleMapsUrl: createGoogleMapsSearchUrl(
-        'Centro Villa Gesell Buenos Aires',
+        'Plaza Primera Junta Villa Gesell Buenos Aires',
       ),
       highlight: 'Paseo y servicios',
       displayOrder: 3,
@@ -57,9 +58,10 @@ export const POINTS_OF_INTEREST_MAP: Readonly<
     },
     {
       id: 'beach',
-      title: 'Muelle y playa',
+      title: 'Muelle de Villa Gesell',
       category: 'beach',
-      summary: 'Punto clasico para orientarse y bajar a la playa en la ciudad.',
+      summary:
+        'Referencia costera clasica para orientarse, encontrarse y bajar a la playa.',
       googleMapsUrl: createGoogleMapsSearchUrl(
         'Muelle de Villa Gesell Buenos Aires',
       ),
@@ -70,44 +72,46 @@ export const POINTS_OF_INTEREST_MAP: Readonly<
   [DestinationId.PAMPAS]: [
     {
       id: 'first-aid',
-      title: 'Sala de primeros auxilios',
+      title: 'Centro de salud de cercania',
       category: 'healthcare',
       summary:
-        'Referencia sanitaria mas cercana para atencion inicial en la zona.',
+        'Referencia practica para ubicar rapido asistencia en el corredor sur y resolver una emergencia inicial.',
       googleMapsUrl: createGoogleMapsSearchUrl(
-        'Sala de primeros auxilios Mar de las Pampas Buenos Aires',
+        'Centro de salud cerca de Mar de las Pampas Buenos Aires',
       ),
-      highlight: 'Atencion inicial',
+      highlight: 'Atencion cercana',
       displayOrder: 1,
     },
     {
       id: 'police',
-      title: 'Policia',
+      title: 'Comisaria Tercera Mar de las Pampas',
       category: 'safety',
       summary:
-        'Punto de apoyo para consultas de seguridad y asistencia policial.',
+        'Dependencia policial de referencia para Mar de las Pampas y las localidades del sur.',
       googleMapsUrl: createGoogleMapsSearchUrl(
-        'Policia Mar de las Pampas Buenos Aires',
+        'Comisaria Tercera Mar de las Pampas Buenos Aires',
       ),
       highlight: 'Seguridad',
       displayOrder: 2,
     },
     {
       id: 'downtown',
-      title: 'Centro de la ciudad',
+      title: 'Centro comercial de El Lucero',
       category: 'downtown',
-      summary: 'Area comercial principal con gastronomia, paseo y servicios.',
+      summary:
+        'Corredor comercial principal del destino, con gastronomia, tiendas y movimiento peatonal.',
       googleMapsUrl: createGoogleMapsSearchUrl(
-        'Centro de Mar de las Pampas Buenos Aires',
+        'El Lucero Mar de las Pampas Buenos Aires',
       ),
       highlight: 'Paseo y servicios',
       displayOrder: 3,
     },
     {
       id: 'pharmacy',
-      title: 'Farmacia',
+      title: 'Farmacia de Mar de las Pampas',
       category: 'pharmacy',
-      summary: 'Acceso rapido a farmacias cercanas para necesidades basicas.',
+      summary:
+        'Busqueda enfocada en farmacias del centro comercial para resolver compras esenciales.',
       googleMapsUrl: createGoogleMapsSearchUrl(
         'Farmacia Mar de las Pampas Buenos Aires',
       ),
@@ -116,9 +120,10 @@ export const POINTS_OF_INTEREST_MAP: Readonly<
     },
     {
       id: 'beach',
-      title: 'Acceso a la playa',
+      title: 'Acceso de playa de Mar de las Pampas',
       category: 'beach',
-      summary: 'Referencia para llegar a la playa desde el nucleo urbano.',
+      summary:
+        'Punto de orientacion para bajar a la playa desde el bosque y el area comercial.',
       googleMapsUrl: createGoogleMapsSearchUrl(
         'Playa Mar de las Pampas Buenos Aires',
       ),
@@ -129,55 +134,61 @@ export const POINTS_OF_INTEREST_MAP: Readonly<
   [DestinationId.MAR_AZUL]: [
     {
       id: 'first-aid',
-      title: 'Sala de primeros auxilios',
+      title: 'CAPS Mar Azul',
       category: 'healthcare',
       summary:
-        'Punto de referencia para atencion inicial y derivaciones cercanas.',
+        'Centro de salud de referencia en Mar Azul para atencion primaria y consultas de cercania.',
       googleMapsUrl: createGoogleMapsSearchUrl(
-        'Sala de primeros auxilios Mar Azul Buenos Aires',
+        'Centro de Salud Mar Azul Buenos Aires',
       ),
-      highlight: 'Atencion inicial',
+      highlight: 'Atencion primaria',
       displayOrder: 1,
     },
     {
       id: 'police',
-      title: 'Policia',
+      title: 'Comisaria del corredor sur',
       category: 'safety',
-      summary: 'Punto de apoyo local para seguridad publica y emergencias.',
-      googleMapsUrl: createGoogleMapsSearchUrl('Policia Mar Azul Buenos Aires'),
+      summary:
+        'Referencia de seguridad utilizada por Mar Azul y el resto de las localidades del sur.',
+      googleMapsUrl: createGoogleMapsSearchUrl(
+        'Comisaria cerca de Mar Azul Buenos Aires',
+      ),
       highlight: 'Seguridad',
       displayOrder: 2,
     },
     {
       id: 'downtown',
-      title: 'Centro de la ciudad',
+      title: 'Centro comercial Avenida Mar del Plata',
       category: 'downtown',
-      summary: 'Area central con comercios y movimiento cotidiano del destino.',
+      summary:
+        'Tramo comercial y peatonal mas reconocible para ubicarse y encontrar servicios en Mar Azul.',
       googleMapsUrl: createGoogleMapsSearchUrl(
-        'Centro de Mar Azul Buenos Aires',
+        'Avenida Mar del Plata Mar Azul Buenos Aires',
       ),
       highlight: 'Paseo y servicios',
       displayOrder: 3,
     },
     {
       id: 'pharmacy',
-      title: 'Farmacia',
+      title: 'Farmacia Gaita',
       category: 'pharmacy',
       summary:
-        'Busqueda directa de farmacias cercanas para compras esenciales.',
+        'Referencia concreta para compras esenciales y productos de farmacia en Mar Azul.',
       googleMapsUrl: createGoogleMapsSearchUrl(
-        'Farmacia Mar Azul Buenos Aires',
+        'Farmacia Gaita Mar Azul Buenos Aires',
       ),
       highlight: 'Compras esenciales',
       displayOrder: 4,
     },
     {
       id: 'beach',
-      title: 'Acceso a la playa',
+      title: 'Acceso de playa y Faro Querandi',
       category: 'beach',
       summary:
-        'Referencia rapida para ubicar la costa y sus accesos principales.',
-      googleMapsUrl: createGoogleMapsSearchUrl('Playa Mar Azul Buenos Aires'),
+        'Referencia costera para llegar a la playa y tomar como orientacion la salida hacia el faro.',
+      googleMapsUrl: createGoogleMapsSearchUrl(
+        'Playa Mar Azul Faro Querandi Buenos Aires',
+      ),
       highlight: 'Naturaleza',
       displayOrder: 5,
     },

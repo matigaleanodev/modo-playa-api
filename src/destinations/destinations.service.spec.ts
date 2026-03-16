@@ -78,43 +78,43 @@ describe('DestinationsService', () => {
       pointsOfInterest: [
         {
           id: 'first-aid',
-          title: 'Sala de primeros auxilios',
+          title: 'Centro de salud de cercania',
           category: 'healthcare',
           summary:
-            'Referencia sanitaria mas cercana para atencion inicial en la zona.',
+            'Referencia practica para ubicar rapido asistencia en el corredor sur y resolver una emergencia inicial.',
           googleMapsUrl:
-            'https://www.google.com/maps/search/?api=1&query=Sala%20de%20primeros%20auxilios%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
-          highlight: 'Atencion inicial',
+            'https://www.google.com/maps/search/?api=1&query=Centro%20de%20salud%20cerca%20de%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
+          highlight: 'Atencion cercana',
           displayOrder: 1,
         },
         {
           id: 'police',
-          title: 'Policia',
+          title: 'Comisaria Tercera Mar de las Pampas',
           category: 'safety',
           summary:
-            'Punto de apoyo para consultas de seguridad y asistencia policial.',
+            'Dependencia policial de referencia para Mar de las Pampas y las localidades del sur.',
           googleMapsUrl:
-            'https://www.google.com/maps/search/?api=1&query=Policia%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
+            'https://www.google.com/maps/search/?api=1&query=Comisaria%20Tercera%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
           highlight: 'Seguridad',
           displayOrder: 2,
         },
         {
           id: 'downtown',
-          title: 'Centro de la ciudad',
+          title: 'Centro comercial de El Lucero',
           category: 'downtown',
           summary:
-            'Area comercial principal con gastronomia, paseo y servicios.',
+            'Corredor comercial principal del destino, con gastronomia, tiendas y movimiento peatonal.',
           googleMapsUrl:
-            'https://www.google.com/maps/search/?api=1&query=Centro%20de%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
+            'https://www.google.com/maps/search/?api=1&query=El%20Lucero%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
           highlight: 'Paseo y servicios',
           displayOrder: 3,
         },
         {
           id: 'pharmacy',
-          title: 'Farmacia',
+          title: 'Farmacia de Mar de las Pampas',
           category: 'pharmacy',
           summary:
-            'Acceso rapido a farmacias cercanas para necesidades basicas.',
+            'Busqueda enfocada en farmacias del centro comercial para resolver compras esenciales.',
           googleMapsUrl:
             'https://www.google.com/maps/search/?api=1&query=Farmacia%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
           highlight: 'Compras esenciales',
@@ -122,9 +122,10 @@ describe('DestinationsService', () => {
         },
         {
           id: 'beach',
-          title: 'Acceso a la playa',
+          title: 'Acceso de playa de Mar de las Pampas',
           category: 'beach',
-          summary: 'Referencia para llegar a la playa desde el nucleo urbano.',
+          summary:
+            'Punto de orientacion para bajar a la playa desde el bosque y el area comercial.',
           googleMapsUrl:
             'https://www.google.com/maps/search/?api=1&query=Playa%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
           highlight: 'Naturaleza',
