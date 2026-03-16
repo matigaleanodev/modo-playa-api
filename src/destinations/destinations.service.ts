@@ -43,7 +43,7 @@ export class DestinationsService {
       weather: weatherContext.weather,
       forecast: weatherContext.forecast,
       sun: sunContext,
-      pointsOfInterest: POINTS_OF_INTEREST_MAP[destination.id] ?? [],
+      pointsOfInterest: [...(POINTS_OF_INTEREST_MAP[destination.id] ?? [])],
     };
   }
 }

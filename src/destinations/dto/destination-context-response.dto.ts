@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DestinationId } from '../providers/destination-id.enum';
-import { PointOfInterestCategory } from '../interfaces/point-of-interest.interface';
+import type { PointOfInterestCategory } from '../interfaces/point-of-interest.interface';
 
 export class WeatherSnapshotDto {
   @ApiProperty({ example: 27 })
