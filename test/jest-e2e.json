@@ -12,6 +12,7 @@
     "^@auth/(.*)$": "<rootDir>/src/auth/$1",
     "^@users/(.*)$": "<rootDir>/src/users/$1",
     "^@common/(.*)$": "<rootDir>/src/common/$1",
+    "^@mail/(.*)$": "<rootDir>/src/mail/$1",
     "^@media/(.*)$": "<rootDir>/src/media/$1"
   }
 }
