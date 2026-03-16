@@ -90,7 +90,7 @@ La API implementa un modelo multi-tenant basado en:
 ### 🌤️ Destinations
 
 - Listado público de destinos soportados
-- Contexto por destino (clima actual, pronóstico corto, amanecer/atardecer)
+- Contexto por destino (clima actual, pronóstico corto, amanecer/atardecer y points of interest curados con links salientes a Google Maps)
 
 ### ✉️ Mail
 

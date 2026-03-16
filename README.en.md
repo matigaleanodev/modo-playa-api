@@ -87,7 +87,7 @@ Multi-tenancy is implemented through:
 ### 🌤️ Destinations
 
 - Public list of supported destinations
-- Destination context (current weather, short forecast, sunrise/sunset)
+- Destination context (current weather, short forecast, sunrise/sunset, and curated points of interest with outbound Google Maps links)
 
 ### ✉️ Mail
 

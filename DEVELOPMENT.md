@@ -69,6 +69,7 @@ Notas:
 - `GET /api/admin/dashboard/summary` expone métricas y alertas operativas para el owner autenticado.
 - `recentActivity` dentro del dashboard usa `source=timestamps` para indicar que el bloque se deriva desde `createdAt/updatedAt`; no es una auditoría persistida.
 - `GET /api/destinations` y `GET /api/destinations/:id/context` son endpoints públicos de destinos.
+- `GET /api/destinations/:id/context` expone `pointsOfInterest` curados con links salientes a Google Maps; no existen endpoints publicos adicionales para este feature.
 - `POST /api/admin/lodging-image-uploads` recibe la imagen inicial por multipart, la sube a R2 desde backend y la deja lista antes de crear el lodging.
 - `POST /api/admin/lodgings` puede asociar `pendingImageIds` + `uploadSessionId` en la misma operación de alta.
 - `POST /api/admin/lodgings/:lodgingId/images` gestiona altas de imágenes de lodgings ya existentes por multipart backend-only.
