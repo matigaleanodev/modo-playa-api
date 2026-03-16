@@ -6,6 +6,7 @@ import {
   DESTINATIONS,
   DESTINATIONS_MAP,
 } from './providers/destinations.config';
+import { POINTS_OF_INTEREST_MAP } from './providers/points-of-interest.config';
 import { SunService } from './services/sun.service';
 import { WeatherService } from './services/weather.service';
 
@@ -42,6 +43,7 @@ export class DestinationsService {
       weather: weatherContext.weather,
       forecast: weatherContext.forecast,
       sun: sunContext,
+      pointsOfInterest: POINTS_OF_INTEREST_MAP[destination.id] ?? [],
     };
   }
 }

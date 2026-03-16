@@ -99,6 +99,19 @@ describe('Destinations endpoint (e2e)', () => {
         sunrise: '06:12',
         sunset: '20:05',
       },
+      pointsOfInterest: [
+        {
+          id: 'first-aid',
+          title: 'Sala de primeros auxilios',
+          category: 'healthcare',
+          summary:
+            'Referencia sanitaria mas cercana para atencion inicial en la zona.',
+          googleMapsUrl:
+            'https://www.google.com/maps/search/?api=1&query=Sala%20de%20primeros%20auxilios%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
+          highlight: 'Atencion inicial',
+          displayOrder: 1,
+        },
+      ],
     });
 
     await request(app.getHttpServer())
@@ -121,6 +134,19 @@ describe('Destinations endpoint (e2e)', () => {
           sunrise: '06:12',
           sunset: '20:05',
         },
+        pointsOfInterest: [
+          {
+            id: 'first-aid',
+            title: 'Sala de primeros auxilios',
+            category: 'healthcare',
+            summary:
+              'Referencia sanitaria mas cercana para atencion inicial en la zona.',
+            googleMapsUrl:
+              'https://www.google.com/maps/search/?api=1&query=Sala%20de%20primeros%20auxilios%20Mar%20de%20las%20Pampas%20Buenos%20Aires',
+            highlight: 'Atencion inicial',
+            displayOrder: 1,
+          },
+        ],
       });
   });
 
