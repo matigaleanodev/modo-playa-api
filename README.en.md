@@ -128,6 +128,14 @@ Global validation uses `whitelist + forbidNonWhitelisted`, so undefined
 fields in DTOs are rejected (for example, do not send `id` in
 `POST /api/admin/contacts`).
 
+The interactive Swagger UI documentation is available at:
+
+`/docs`
+
+The OpenAPI JSON document is available at:
+
+`/openapi.json`
+
 Contract and domain errors expose explicit response `code` values (for
 example `INVALID_DESTINATION_ID`, `INVALID_TARGET_OWNER_ID`,
 `INVALID_PRICE_RANGE`, `PROFILE_IMAGE_FORBIDDEN_FOR_SUPERADMIN`) so

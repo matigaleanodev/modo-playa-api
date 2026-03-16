@@ -64,6 +64,14 @@ Disponible en:
 
 http://localhost:3000/api
 
+Swagger UI:
+
+http://localhost:3000/docs
+
+OpenAPI JSON:
+
+http://localhost:3000/openapi.json
+
 Notas:
 
 - `GET /api/admin/dashboard/summary` expone métricas y alertas operativas para el owner autenticado.

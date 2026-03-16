@@ -121,6 +121,14 @@ Ejemplos:
 La API también incluye endpoints administrativos para gestión de media
 (health de R2 y gestión de imágenes).
 
+La documentación interactiva de Swagger UI está disponible en:
+
+`/docs`
+
+El documento OpenAPI en JSON está disponible en:
+
+`/openapi.json`
+
 La validación global usa `whitelist + forbidNonWhitelisted`, por lo que
 se rechazan campos no definidos en DTOs (por ejemplo, no enviar `id` en
 `POST /api/admin/contacts`).
