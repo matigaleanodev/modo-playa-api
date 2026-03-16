@@ -64,11 +64,20 @@ Available at:
 
 http://localhost:3000/api
 
+Swagger UI:
+
+http://localhost:3000/docs
+
+OpenAPI JSON:
+
+http://localhost:3000/openapi.json
+
 Notes:
 
 - `GET /api/admin/dashboard/summary` returns owner-scoped metrics and operational alerts.
 - `recentActivity` inside dashboard uses `source=timestamps` to indicate that the block is derived from `createdAt/updatedAt`; it is not a persisted audit log.
 - `GET /api/destinations` and `GET /api/destinations/:id/context` are public destinations endpoints.
+- `GET /api/destinations/:id/context` exposes curated `pointsOfInterest` with outbound Google Maps links; no extra public endpoints exist for this feature.
 - `POST /api/admin/lodging-image-uploads` receives the initial image as multipart, uploads it to R2 from backend, and leaves it ready before the lodging exists.
 - `POST /api/admin/lodgings` can associate `pendingImageIds` + `uploadSessionId` in the same create operation.
 - `POST /api/admin/lodgings/:lodgingId/images` manages image creation for existing lodgings through backend-only multipart uploads.

@@ -30,7 +30,7 @@ export function ApiGetDestinationContextDoc() {
     ApiOperation({
       summary: 'Obtener contexto de un destino',
       description:
-        'Devuelve clima actual, pronostico corto y amanecer/atardecer para el destino seleccionado.',
+        'Devuelve clima actual, pronostico corto, amanecer/atardecer y puntos de interes curados para el destino seleccionado.',
     }),
     ApiParam({
       name: 'id',

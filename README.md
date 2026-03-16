@@ -90,7 +90,7 @@ La API implementa un modelo multi-tenant basado en:
 ### 🌤️ Destinations
 
 - Listado público de destinos soportados
-- Contexto por destino (clima actual, pronóstico corto, amanecer/atardecer)
+- Contexto por destino (clima actual, pronóstico corto, amanecer/atardecer y points of interest curados con links salientes a Google Maps)
 
 ### ✉️ Mail
 
@@ -120,6 +120,14 @@ Ejemplos:
 
 La API también incluye endpoints administrativos para gestión de media
 (health de R2 y gestión de imágenes).
+
+La documentación interactiva de Swagger UI está disponible en:
+
+`/docs`
+
+El documento OpenAPI en JSON está disponible en:
+
+`/openapi.json`
 
 La validación global usa `whitelist + forbidNonWhitelisted`, por lo que
 se rechazan campos no definidos en DTOs (por ejemplo, no enviar `id` en

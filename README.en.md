@@ -87,7 +87,7 @@ Multi-tenancy is implemented through:
 ### 🌤️ Destinations
 
 - Public list of supported destinations
-- Destination context (current weather, short forecast, sunrise/sunset)
+- Destination context (current weather, short forecast, sunrise/sunset, and curated points of interest with outbound Google Maps links)
 
 ### ✉️ Mail
 
@@ -127,6 +127,14 @@ Examples:
 Global validation uses `whitelist + forbidNonWhitelisted`, so undefined
 fields in DTOs are rejected (for example, do not send `id` in
 `POST /api/admin/contacts`).
+
+The interactive Swagger UI documentation is available at:
+
+`/docs`
+
+The OpenAPI JSON document is available at:
+
+`/openapi.json`
 
 Contract and domain errors expose explicit response `code` values (for
 example `INVALID_DESTINATION_ID`, `INVALID_TARGET_OWNER_ID`,
