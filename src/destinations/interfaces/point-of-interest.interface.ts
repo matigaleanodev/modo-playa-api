@@ -3,7 +3,8 @@ export type PointOfInterestCategory =
   | 'safety'
   | 'downtown'
   | 'pharmacy'
-  | 'beach';
+  | 'beach'
+  | 'landmark';
 
 export interface PointOfInterestConfig {
   id: string;

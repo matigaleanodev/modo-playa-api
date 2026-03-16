@@ -41,7 +41,7 @@ export class PointOfInterestDto {
 
   @ApiProperty({
     example: 'healthcare',
-    enum: ['healthcare', 'safety', 'downtown', 'pharmacy', 'beach'],
+    enum: ['healthcare', 'safety', 'downtown', 'pharmacy', 'beach', 'landmark'],
   })
   category: PointOfInterestCategory;
 
