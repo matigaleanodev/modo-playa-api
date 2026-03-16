@@ -106,6 +106,52 @@ npm run lint
 
 ---
 
+## 🚀 Runtime Contract by Environment
+
+Current state:
+
+- the current operating posture is already production-oriented
+- `Mongo`, `R2`, and `Resend` are real runtime dependencies, not optional integrations for this backend
+
+MongoDB:
+
+- `MONGO_URI` is required in every environment where the API must serve auth, users, contacts, lodgings, and dashboard
+- the database is the operational source of truth for the product
+- any invalid deploy without Mongo connectivity should be treated as blocking
+
+Cloudflare R2:
+
+- `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_REGION`, and `MEDIA_PUBLIC_BASE_URL` form the minimum media contract
+- the canonical flow is backend-only multipart: clients upload files to the API and only the backend talks to R2
+- if R2 is unavailable, lodging-image and profile-image flows should be treated as degraded
+
+Resend:
+
+- `RESEND_API_KEY` and `RESEND_FROM_EMAIL` form the minimum transactional mail contract
+- auth depends on Resend for activation and password recovery
+- if Resend is unavailable, the deploy may still serve reads and already-established auth flows, but email-required flows become functionally degraded
+
+---
+
+## 🔎 Post-Deploy Smoke Checks
+
+Recommended minimum checks after each production deploy:
+
+1. `GET /api/health` should return `200`
+2. `GET /docs` should serve Swagger UI
+3. `GET /openapi.json` should return the current public contract
+4. `GET /api/destinations` should return `200`
+5. `GET /api/lodgings` should return `200`
+6. `GET /api/admin/media/health` with a valid JWT should confirm effective R2 connectivity
+7. run a controlled auth flow that requires email whenever the deploy touches auth or mail
+
+Notes:
+
+- if the release modifies public contracts, the smoke should include at least one real request against every affected endpoint
+- if the release modifies media, the smoke should include `media/health` plus a controlled upload in a safe environment
+
+---
+
 ## 🏗️ Production Notes
 
 - Modular architecture

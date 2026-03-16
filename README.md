@@ -154,6 +154,14 @@ endpoint.
 
 ---
 
+## ⚙️ Operacion
+
+- El backend opera hoy con `MongoDB`, `Cloudflare R2` y `Resend` como dependencias runtime reales de produccion.
+- Swagger UI se publica en `/docs` y el contrato OpenAPI en `/openapi.json`.
+- Los smoke checks minimos post-deploy y el detalle del contrato operativo por ambiente viven en [DEVELOPMENT.md](./DEVELOPMENT.md).
+
+---
+
 ## 🧑‍💻 Desarrollo
 
 Ver guía completa en:

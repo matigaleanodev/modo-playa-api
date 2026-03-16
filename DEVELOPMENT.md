@@ -106,6 +106,52 @@ npm run lint
 
 ---
 
+## 🚀 Contrato Operativo por Ambiente
+
+Estado actual:
+
+- la operacion vigente ya esta orientada a produccion
+- `Mongo`, `R2` y `Resend` son dependencias runtime reales, no integraciones opcionales para este backend
+
+MongoDB:
+
+- `MONGO_URI` es obligatorio en todos los ambientes donde la API deba resolver auth, usuarios, contacts, lodgings y dashboard
+- la base de datos es la fuente de verdad operacional del producto
+- cualquier deploy invalido sin conectividad a Mongo debe considerarse bloqueante
+
+Cloudflare R2:
+
+- `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_REGION` y `MEDIA_PUBLIC_BASE_URL` forman el contrato minimo para media
+- el flujo canonico es backend-only multipart: el cliente sube archivos a la API y solo el backend interactua con R2
+- si R2 no esta disponible, deben considerarse degradados los flujos de imagen de lodging y profile image
+
+Resend:
+
+- `RESEND_API_KEY` y `RESEND_FROM_EMAIL` forman el contrato minimo para emails transaccionales
+- auth depende de Resend para activacion y recuperacion de password
+- si Resend no esta disponible, el deploy puede responder para lectura y auth ya iniciada, pero los flujos que requieren envio de email quedan funcionalmente degradados
+
+---
+
+## 🔎 Smoke Checks Post-Deploy
+
+Minimos recomendados despues de cada deploy a produccion:
+
+1. `GET /api/health` debe responder `200`
+2. `GET /docs` debe responder y publicar Swagger UI
+3. `GET /openapi.json` debe responder y reflejar el contrato publico vigente
+4. `GET /api/destinations` debe responder `200`
+5. `GET /api/lodgings` debe responder `200`
+6. `GET /api/admin/media/health` con JWT valido debe confirmar conectividad efectiva con R2
+7. ejecutar un flujo controlado de auth que requiera email solo cuando el deploy toque auth o mail
+
+Notas:
+
+- si el release modifica contratos publicos, el smoke debe incluir al menos un request real a cada endpoint afectado
+- si el release modifica media, el smoke debe incluir `media/health` y un upload controlado en ambiente seguro
+
+---
+
 ## 🏗️ Consideraciones
 
 - Arquitectura modular
