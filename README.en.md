@@ -105,6 +105,14 @@ Multi-tenancy is implemented through:
 
 ---
 
+## ⚙️ Operations
+
+- The backend currently operates with `MongoDB`, `Cloudflare R2`, and `Resend` as real production runtime dependencies.
+- Swagger UI is served at `/docs` and the OpenAPI contract at `/openapi.json`.
+- Minimum post-deploy smoke checks and the environment runtime contract live in [DEVELOPMENT.en.md](./DEVELOPMENT.en.md).
+
+---
+
 ## 🌍 Endpoints
 
 All endpoints are under:
