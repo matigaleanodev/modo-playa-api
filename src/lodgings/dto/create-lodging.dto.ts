@@ -133,7 +133,7 @@ export class CreateLodgingDto {
   @ApiPropertyOptional({ example: true })
   @IsBoolean()
   @IsOptional()
-  active?: boolean;
+  isPubliclyVisible?: boolean;
 
   @ApiPropertyOptional({
     type: [String],

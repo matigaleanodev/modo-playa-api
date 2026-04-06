@@ -66,6 +66,7 @@ export class LodgingMapper {
       minNights: lodging.minNights,
       distanceToBeach: lodging.distanceToBeach,
       amenities: lodging.amenities,
+      isPubliclyVisible: lodging.isPubliclyVisible,
       mainImage: derivedMainImage ?? '',
       images: Array.from(new Set(imageUrls)),
       mediaImages,

@@ -51,6 +51,13 @@ export class LodgingResponseDto {
 
   @ApiProperty({
     description:
+      'Determina si el alojamiento se expone en los endpoints publicos.',
+    example: true,
+  })
+  isPubliclyVisible!: boolean;
+
+  @ApiProperty({
+    description:
       'URL pública completa de la imagen principal expuesta al frontend.',
     example:
       'https://media.example.com/lodgings/699c9b30436edbee481101be/244e45ae-bdb3-407b-adf2-ade015e1a5ef/original.webp',

@@ -16,6 +16,7 @@ import { LodgingsService } from '../lodgings.service';
 import { CreateLodgingDto } from '../dto/create-lodging.dto';
 import { UpdateLodgingDto } from '../dto/update-lodging.dto';
 import { AvailabilityRangeDto } from '../dto/availability-range.dto';
+import { SetLodgingPublicVisibilityDto } from '../dto/set-lodging-public-visibility.dto';
 import { JwtAuthGuard } from '@auth/guard/auth.guard';
 import { AdminLodgingsQueryDto } from '@lodgings/dto/pagination-query.dto';
 import { RequestUser } from '@auth/interfaces/request-user.interface';
@@ -33,6 +34,7 @@ import {
   ApiFindAllAdminLodgingsDoc,
   ApiGetOccupiedRangesDoc,
   ApiRemoveOccupiedRangeDoc,
+  ApiSetLodgingPublicVisibilityDoc,
   ApiUpdateLodgingDoc,
 } from '../swagger/lodgings-admin.swagger';
 
@@ -104,6 +106,23 @@ export class LodgingsAdminController {
     @Req() req: Request & { user: RequestUser },
   ): Promise<LodgingResponseDto> {
     const lodging = await this.lodgingsService.update(
+      id,
+      dto,
+      req.user.ownerId,
+      req.user.role,
+    );
+
+    return LodgingMapper.toResponse(lodging, this.mediaUrlBuilder);
+  }
+
+  @ApiSetLodgingPublicVisibilityDoc()
+  @Patch(':id/public-visibility')
+  async setPublicVisibility(
+    @Param('id') id: string,
+    @Body() dto: SetLodgingPublicVisibilityDto,
+    @Req() req: Request & { user: RequestUser },
+  ): Promise<LodgingResponseDto> {
+    const lodging = await this.lodgingsService.setPublicVisibility(
       id,
       dto,
       req.user.ownerId,

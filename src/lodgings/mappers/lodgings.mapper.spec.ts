@@ -35,6 +35,7 @@ describe('LodgingMapper', () => {
         minNights: 2,
         distanceToBeach: 100,
         amenities: ['wifi'],
+        isPubliclyVisible: true,
         mainImage: 'lodgings/legacy-main.webp',
         images: ['lodgings/legacy-main.webp'],
         mediaImages: [
@@ -76,6 +77,7 @@ describe('LodgingMapper', () => {
       'https://media.test/lodgings/1/original.webp',
       'https://media.test/lodgings/1/gallery.webp',
     ]);
+    expect(result.isPubliclyVisible).toBe(true);
     expect(result.occupiedRanges).toEqual([
       { from: '2026-02-01', to: '2026-02-05' },
     ]);
@@ -99,6 +101,7 @@ describe('LodgingMapper', () => {
         bathrooms: 1,
         minNights: 1,
         amenities: [],
+        isPubliclyVisible: false,
         mainImage: 'lodgings/2/main.webp',
         images: ['lodgings/2/main.webp', 'lodgings/2/extra.webp'],
         occupiedRanges: [],
@@ -110,6 +113,7 @@ describe('LodgingMapper', () => {
       'https://media.test/lodgings/2/main.webp',
       'https://media.test/lodgings/2/extra.webp',
     ]);
+    expect(result.isPubliclyVisible).toBe(false);
     expect(result.occupiedRanges).toEqual([]);
   });
 });

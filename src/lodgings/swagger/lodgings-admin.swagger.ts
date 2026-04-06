@@ -85,6 +85,21 @@ export function ApiUpdateLodgingDoc() {
   );
 }
 
+export function ApiSetLodgingPublicVisibilityDoc() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Configurar visibilidad publica',
+      description:
+        'Actualiza si el alojamiento se expone o no en los endpoints publicos.',
+    }),
+    ApiIdParam('id', 'ID del alojamiento'),
+    ApiOkResponseWithType(LodgingResponseDto, {
+      description: 'Visibilidad publica actualizada',
+      example: lodgingResponseExample,
+    }),
+  );
+}
+
 export function ApiGetOccupiedRangesDoc() {
   return applyDecorators(
     ApiOperation({
@@ -137,7 +152,7 @@ export function ApiDeleteLodgingDoc() {
     ApiOperation({
       summary: 'Eliminar alojamiento',
       description:
-        'Realiza soft delete de un alojamiento. SUPERADMIN puede eliminar cualquier registro.',
+        'Realiza hard delete de un alojamiento y elimina sus imagenes asociadas. SUPERADMIN puede eliminar cualquier registro.',
     }),
     ApiIdParam('id', 'ID del alojamiento'),
     ApiOkResponseWithType(DeleteResponseDto, {
