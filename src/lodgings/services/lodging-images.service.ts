@@ -314,6 +314,32 @@ export class LodgingImagesService {
     };
   }
 
+  async deleteAllForLodging(lodging: LodgingDocument): Promise<void> {
+    const storageKeys = new Set<string>();
+
+    for (const image of lodging.mediaImages ?? []) {
+      if (image.key) {
+        storageKeys.add(image.key);
+      }
+    }
+
+    for (const pending of lodging.pendingImageUploads ?? []) {
+      if (pending.stagingKey) {
+        storageKeys.add(pending.stagingKey);
+      }
+    }
+
+    for (const legacyKey of [lodging.mainImage, ...(lodging.images ?? [])]) {
+      if (legacyKey && !/^https?:\/\//i.test(legacyKey)) {
+        storageKeys.add(legacyKey);
+      }
+    }
+
+    await Promise.all(
+      Array.from(storageKeys).map((key) => this.storage.deleteObject(key)),
+    );
+  }
+
   async attachDraftUploadsToLodging(
     lodgingId: string,
     ownerId: string,

@@ -29,6 +29,7 @@ describe('LodgingsService', () => {
 
   const mockLodgingImagesService = {
     attachDraftUploadsToLodging: jest.fn(),
+    deleteAllForLodging: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -57,6 +58,7 @@ describe('LodgingsService', () => {
     mockLodgingImagesService.attachDraftUploadsToLodging.mockResolvedValue(
       undefined,
     );
+    mockLodgingImagesService.deleteAllForLodging.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -92,8 +94,8 @@ describe('LodgingsService', () => {
   // -------------------------
 
   describe('findPublicById', () => {
-    it('debe devolver lodging si existe y está activo', async () => {
-      const lodging = { _id: '1', active: true };
+    it('debe devolver lodging si existe y está visible publicamente', async () => {
+      const lodging = { _id: '1', isPubliclyVisible: true };
       mockLodgingModel.findOne.mockReturnValue(withPopulate(lodging));
 
       const result = await service.findPublicById(lodgingId);
@@ -171,6 +173,36 @@ describe('LodgingsService', () => {
 
       await expect(
         service.update(lodgingId, invalidUpdateDto, ownerId, 'OWNER'),
+      ).rejects.toThrow(DomainException);
+    });
+  });
+
+  describe('setPublicVisibility', () => {
+    it('debe actualizar la visibilidad publica correctamente', async () => {
+      const updated = { _id: '1', isPubliclyVisible: false };
+      mockLodgingModel.findOneAndUpdate.mockReturnValue(withPopulate(updated));
+
+      const result = await service.setPublicVisibility(
+        lodgingId,
+        { isPubliclyVisible: false },
+        ownerId,
+        'OWNER',
+      );
+
+      expect(result).toEqual(updated);
+      expect(mockLodgingModel.findOneAndUpdate).toHaveBeenCalled();
+    });
+
+    it('debe lanzar error si el lodging no existe', async () => {
+      mockLodgingModel.findOneAndUpdate.mockReturnValue(withPopulate(null));
+
+      await expect(
+        service.setPublicVisibility(
+          lodgingId,
+          { isPubliclyVisible: true },
+          ownerId,
+          'OWNER',
+        ),
       ).rejects.toThrow(DomainException);
     });
   });
@@ -348,14 +380,13 @@ describe('LodgingsService', () => {
   });
 
   describe('remove', () => {
-    it('debe hacer soft delete correctamente', async () => {
-      const mockSave = jest.fn().mockResolvedValue(true);
-
-      mockLodgingModel.findOne.mockResolvedValue({
+    it('debe buscar el lodging antes de eliminarlo', async () => {
+      const lodging = {
         _id: '1',
-        active: true,
-        save: mockSave,
-      });
+        isPubliclyVisible: true,
+      };
+      mockLodgingModel.findOne.mockResolvedValue(lodging);
+      mockLodgingModel.deleteOne.mockResolvedValue({ deletedCount: 1 });
 
       const result = await service.remove(
         '507f1f77bcf86cd799439011',
@@ -364,7 +395,10 @@ describe('LodgingsService', () => {
       );
 
       expect(mockLodgingModel.findOne).toHaveBeenCalled();
-      expect(mockSave).toHaveBeenCalled();
+      expect(mockLodgingImagesService.deleteAllForLodging).toHaveBeenCalledWith(
+        lodging,
+      );
+      expect(mockLodgingModel.deleteOne).toHaveBeenCalledWith({ _id: '1' });
       expect(result).toEqual({ deleted: true });
     });
 

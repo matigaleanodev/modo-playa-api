@@ -17,6 +17,7 @@ import { UserRole } from '@common/interfaces/role.interface';
 import { toObjectIdOrThrow } from '@common/utils/object-id.util';
 import { escapeRegex } from '@common/utils/regex.util';
 import { LodgingImagesService } from '@lodgings/services/lodging-images.service';
+import { SetLodgingPublicVisibilityDto } from '@lodgings/dto/set-lodging-public-visibility.dto';
 
 @Injectable()
 export class LodgingsService {
@@ -120,7 +121,7 @@ export class LodgingsService {
     }
 
     const filters: QueryFilter<LodgingDocument> = {
-      active: true,
+      isPubliclyVisible: true,
     };
 
     if (search) {
@@ -181,7 +182,7 @@ export class LodgingsService {
           errorCode: ERROR_CODES.INVALID_LODGING_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
-        active: true,
+        isPubliclyVisible: true,
       })
       .populate(this.contactPopulate);
 
@@ -211,7 +212,7 @@ export class LodgingsService {
     const filters: QueryFilter<LodgingDocument> = {};
 
     if (!includeInactive) {
-      filters.active = true;
+      filters.isPubliclyVisible = true;
     }
 
     if (role !== 'SUPERADMIN') {
@@ -353,10 +354,54 @@ export class LodgingsService {
       );
     }
 
-    lodging.active = false;
-    await lodging.save();
+    await this.lodgingImagesService.deleteAllForLodging(lodging);
+    await this.lodgingModel.deleteOne({ _id: lodging._id });
 
     return { deleted: true };
+  }
+
+  async setPublicVisibility(
+    id: string,
+    dto: SetLodgingPublicVisibilityDto,
+    ownerId: string,
+    role: UserRole,
+  ): Promise<LodgingDocument> {
+    const filters: QueryFilter<LodgingDocument> = {
+      _id: toObjectIdOrThrow(id, {
+        message: 'Invalid lodging id',
+        errorCode: ERROR_CODES.INVALID_LODGING_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      }),
+    };
+
+    if (role !== 'SUPERADMIN') {
+      filters.ownerId = toObjectIdOrThrow(ownerId, {
+        message: 'Invalid owner id',
+        errorCode: ERROR_CODES.INVALID_OWNER_ID,
+        httpStatus: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    const lodging = await this.lodgingModel
+      .findOneAndUpdate(
+        filters,
+        { isPubliclyVisible: dto.isPubliclyVisible },
+        {
+          returnDocument: 'after',
+          runValidators: true,
+        },
+      )
+      .populate(this.contactPopulate);
+
+    if (!lodging) {
+      throw new DomainException(
+        'Lodging not found',
+        ERROR_CODES.LODGING_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return lodging;
   }
 
   async getOccupiedRanges(

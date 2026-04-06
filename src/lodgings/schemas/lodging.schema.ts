@@ -130,12 +130,12 @@ export class Lodging {
   @Prop({
     default: true,
   })
-  active!: boolean;
+  isPubliclyVisible!: boolean;
 }
 
 export const LodgingSchema = SchemaFactory.createForClass(Lodging);
 
-LodgingSchema.index({ active: 1, createdAt: -1 });
-LodgingSchema.index({ active: 1, city: 1, createdAt: -1 });
-LodgingSchema.index({ active: 1, price: 1 });
-LodgingSchema.index({ active: 1, maxGuests: 1 });
+LodgingSchema.index({ isPubliclyVisible: 1, createdAt: -1 });
+LodgingSchema.index({ isPubliclyVisible: 1, city: 1, createdAt: -1 });
+LodgingSchema.index({ isPubliclyVisible: 1, price: 1 });
+LodgingSchema.index({ isPubliclyVisible: 1, maxGuests: 1 });

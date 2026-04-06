@@ -16,6 +16,7 @@ describe('LodgingsAdminController', () => {
     findAdminPaginated: jest.fn(),
     findAdminById: jest.fn(),
     update: jest.fn(),
+    setPublicVisibility: jest.fn(),
     getOccupiedRanges: jest.fn(),
     addOccupiedRange: jest.fn(),
     removeOccupiedRange: jest.fn(),
@@ -165,6 +166,28 @@ describe('LodgingsAdminController', () => {
     );
 
     expect(result).toEqual({ deleted: true });
+  });
+
+  it('debe actualizar la visibilidad publica con ownerId y role', async () => {
+    const dto = { isPubliclyVisible: false };
+
+    mockService.setPublicVisibility.mockResolvedValue({
+      _id: '1',
+      title: 'Hidden',
+      isPubliclyVisible: false,
+    });
+
+    const result = await controller.setPublicVisibility('1', dto, mockRequest);
+
+    expect(mockService.setPublicVisibility).toHaveBeenCalledWith(
+      '1',
+      dto,
+      mockUser.ownerId,
+      mockUser.role,
+    );
+
+    expect(result.id).toBe('1');
+    expect(result.isPubliclyVisible).toBe(false);
   });
 
   it('debe listar occupiedRanges con ownerId y role', async () => {
