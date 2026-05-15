@@ -25,6 +25,12 @@ export class LodgingsService {
     path: 'contactId',
     select: 'name email whatsapp isDefault active notes',
   } as const;
+  private readonly publicVisibilityFilter = {
+    $or: [
+      { isPubliclyVisible: true },
+      { isPubliclyVisible: { $exists: false } },
+    ],
+  } as const;
 
   constructor(
     @InjectModel(Lodging.name)
@@ -121,7 +127,7 @@ export class LodgingsService {
     }
 
     const filters: QueryFilter<LodgingDocument> = {
-      isPubliclyVisible: true,
+      ...this.publicVisibilityFilter,
     };
 
     if (search) {
@@ -182,7 +188,7 @@ export class LodgingsService {
           errorCode: ERROR_CODES.INVALID_LODGING_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
-        isPubliclyVisible: true,
+        ...this.publicVisibilityFilter,
       })
       .populate(this.contactPopulate);
 
