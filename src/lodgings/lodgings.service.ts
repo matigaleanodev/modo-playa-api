@@ -25,12 +25,6 @@ export class LodgingsService {
     path: 'contactId',
     select: 'name email whatsapp isDefault active notes',
   } as const;
-  private readonly publicVisibilityFilter = {
-    $or: [
-      { isPubliclyVisible: true },
-      { isPubliclyVisible: { $exists: false } },
-    ],
-  } as const;
 
   constructor(
     @InjectModel(Lodging.name)
@@ -126,17 +120,21 @@ export class LodgingsService {
       );
     }
 
-    const filters: QueryFilter<LodgingDocument> = {
-      ...this.publicVisibilityFilter,
-    };
+    const filters = this.createPublicVisibilityFilter();
 
     if (search) {
       const escapedSearch = escapeRegex(search);
-      filters.$or = [
-        { title: { $regex: escapedSearch, $options: 'i' } },
-        { description: { $regex: escapedSearch, $options: 'i' } },
-        { tags: { $regex: escapedSearch, $options: 'i' } },
+      filters.$and = [
+        this.createPublicVisibilityFilter(),
+        {
+          $or: [
+            { title: { $regex: escapedSearch, $options: 'i' } },
+            { description: { $regex: escapedSearch, $options: 'i' } },
+            { tags: { $regex: escapedSearch, $options: 'i' } },
+          ],
+        },
       ];
+      delete filters.$or;
     }
 
     if (city) {
@@ -188,7 +186,7 @@ export class LodgingsService {
           errorCode: ERROR_CODES.INVALID_LODGING_ID,
           httpStatus: HttpStatus.BAD_REQUEST,
         }),
-        ...this.publicVisibilityFilter,
+        ...this.createPublicVisibilityFilter(),
       })
       .populate(this.contactPopulate);
 
@@ -621,5 +619,14 @@ export class LodgingsService {
       errorCode: ERROR_CODES.INVALID_OWNER_ID,
       httpStatus: HttpStatus.BAD_REQUEST,
     });
+  }
+
+  private createPublicVisibilityFilter(): QueryFilter<LodgingDocument> {
+    return {
+      $or: [
+        { isPubliclyVisible: true },
+        { isPubliclyVisible: { $exists: false } },
+      ],
+    };
   }
 }
