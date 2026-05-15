@@ -87,6 +87,32 @@ describe('LodgingsService', () => {
         },
       });
     });
+
+    it('debe incluir lodgings legacy sin isPubliclyVisible en el filtro publico', async () => {
+      const findChain = {
+        populate: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockResolvedValue([]),
+      };
+      mockLodgingModel.find.mockReturnValue(findChain);
+      mockLodgingModel.countDocuments.mockResolvedValue(0);
+
+      await service.findPublicPaginated({});
+
+      expect(mockLodgingModel.find).toHaveBeenCalledWith({
+        $or: [
+          { isPubliclyVisible: true },
+          { isPubliclyVisible: { $exists: false } },
+        ],
+      });
+      expect(mockLodgingModel.countDocuments).toHaveBeenCalledWith({
+        $or: [
+          { isPubliclyVisible: true },
+          { isPubliclyVisible: { $exists: false } },
+        ],
+      });
+    });
   });
 
   // -------------------------
@@ -101,7 +127,14 @@ describe('LodgingsService', () => {
       const result = await service.findPublicById(lodgingId);
 
       expect(result).toEqual(lodging);
-      expect(mockLodgingModel.findOne).toHaveBeenCalled();
+      const [findOneFilters] = mockLodgingModel.findOne.mock.calls[0] as [
+        Record<string, unknown>,
+      ];
+      expect(findOneFilters.$or).toEqual([
+        { isPubliclyVisible: true },
+        { isPubliclyVisible: { $exists: false } },
+      ]);
+      expect(findOneFilters._id).toBeInstanceOf(Types.ObjectId);
     });
 
     it('debe lanzar DomainException si no existe', async () => {
