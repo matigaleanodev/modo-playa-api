@@ -127,13 +127,14 @@ describe('LodgingsService', () => {
       const result = await service.findPublicById(lodgingId);
 
       expect(result).toEqual(lodging);
-      expect(mockLodgingModel.findOne).toHaveBeenCalledWith({
-        _id: expect.any(Types.ObjectId),
-        $or: [
-          { isPubliclyVisible: true },
-          { isPubliclyVisible: { $exists: false } },
-        ],
-      });
+      const [findOneFilters] = mockLodgingModel.findOne.mock.calls[0] as [
+        Record<string, unknown>,
+      ];
+      expect(findOneFilters.$or).toEqual([
+        { isPubliclyVisible: true },
+        { isPubliclyVisible: { $exists: false } },
+      ]);
+      expect(findOneFilters._id).toBeInstanceOf(Types.ObjectId);
     });
 
     it('debe lanzar DomainException si no existe', async () => {
